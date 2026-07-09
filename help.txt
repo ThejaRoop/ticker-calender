@@ -1,0 +1,89 @@
+ticker-calendar/
+├── main.py
+├── ALERT_RULES.md              # Human-readable rules (review at a glance)
+├── requirements.txt
+└── ticker_calendar/
+    ├── config/
+    │   ├── settings.py         # Calendar settings
+    │   ├── alert_rules.py      # Programmed rule constants
+    │   └── defaults.py         # Default popular ticker list
+    ├── db/
+    │   ├── tickers.py          # Earnings calendar CRUD
+    │   ├── popular_tickers.py  # Popular list CRUD
+    │   └── alerts.py           # Fired-alert deduplication log
+    ├── services/
+    │   ├── calendar_service.py # 90-day recurrence
+    │   ├── market_service.py   # Yahoo Finance prices (yfinance)
+    │   ├── popular_service.py  # Popular ticker management
+    │   ├── alert_service.py    # Desktop UI background monitor
+    │   └── notification_service.py  # ntfy.sh push alerts
+    ├── server/
+    │   ├── scheduler.py        # APScheduler — exact-time checks
+    │   ├── job_runner.py       # Run one rule + notify + log
+    │   ├── lock.py             # Prevents overlapping yfinance calls
+    │   └── heartbeat.py        # Alive signal for monitoring
+    ├── rules/
+    │   └── evaluator.py        # All 4 alert rules
+    └── ui/
+        ├── app.py              # Main window + menu
+        ├── calendar_view.py
+        ├── ticker_dialog.py
+        ├── popular_dialog.py
+        └── alerts_panel.py
+
+
+Alert rules (programmed + documented)
+Rule	When	Time (ET)	Condition
+1. Earnings today
+Source earning date is today
+10:00–10:45
+Stock down from open
+2. Earnings next week
+Friday before next Mon–Sun week with earnings
+10:00–10:45
+No price check (setup alert)
+3. Popular weekday
+Mon / Tue / Wed
+10:30–10:35
+Popular stock down from open
+5. Popular Friday
+Normal Friday
+10:00–10:45
+Popular stock down from open
+
+
+
+
+C:\Users\nagis\ticker-calendar\plugin_earnings_dates.py
+
+run this script, to populate dates in to the calender for tickers
+
+Ubuntu setup
+
+cd ~/ticker-calendar
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+# Set your ntfy topic
+export NTFY_TOPIC=test_myalerts
+
+# Test one rule manually
+python run_server.py run-rule earnings_today --time 10:00
+
+# See all scheduled jobs
+python run_server.py list
+
+# Install as a service (edit paths/user in deploy/ticker-calendar.service first)
+sudo cp deploy/ticker-calendar.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now ticker-calendar
+sudo systemctl status ticker-calendar
+
+Monitor health:
+
+cat logs/heartbeat.txt    # updated every minute if alive
+tail -f logs/server.log   # job run details
+Run tests
+pip install -r requirements-dev.txt
+python -m pytest tests/ -v

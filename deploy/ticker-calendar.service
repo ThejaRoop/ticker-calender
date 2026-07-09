@@ -1,0 +1,20 @@
+[Unit]
+Description=Ticker Calendar Alert Scheduler
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/ticker-calendar
+Environment=NTFY_TOPIC=test_myalerts
+Environment=TICKER_CALENDAR_LOG_DIR=/home/ubuntu/ticker-calendar/logs
+ExecStart=/home/ubuntu/ticker-calendar/.venv/bin/python run_server.py serve
+Restart=always
+RestartSec=10
+# Give yfinance + ntfy time to finish if a job is running during shutdown
+TimeoutStopSec=120
+
+[Install]
+WantedBy=multi-user.target
