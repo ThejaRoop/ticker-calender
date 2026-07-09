@@ -46,6 +46,12 @@ def cmd_serve(_args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_doctor(_args: argparse.Namespace) -> int:
+    from ticker_calendar.server.doctor import run_doctor
+
+    return run_doctor()
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Ticker Calendar alert server")
     parser.add_argument("-v", "--verbose", action="store_true", help="Debug logging")
@@ -53,6 +59,7 @@ def main() -> int:
 
     sub.add_parser("serve", help="Start the long-running scheduler (use with systemd)")
     sub.add_parser("list", help="Show all scheduled check times")
+    sub.add_parser("doctor", help="Verify install (imports, yfinance pin, DB, schedule)")
 
     run_parser = sub.add_parser("run-rule", help="Run one rule immediately (testing)")
     run_parser.add_argument("rule_id", help="Rule id, e.g. earnings_today")
@@ -64,6 +71,8 @@ def main() -> int:
 
     if args.command == "list":
         return cmd_list(args)
+    if args.command == "doctor":
+        return cmd_doctor(args)
     if args.command == "run-rule":
         return cmd_run_rule(args)
     if args.command == "serve":

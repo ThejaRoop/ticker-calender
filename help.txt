@@ -58,6 +58,17 @@ C:\Users\nagis\ticker-calendar\plugin_earnings_dates.py
 
 run this script, to populate dates in to the calender for tickers
 
+
+Ubuntu server deploy (fool-proof)
+---------------------------------
+1. bash scripts/setup_ubuntu.sh
+2. python run_server.py doctor          # must pass before going live
+3. python run_server.py list            # confirm scheduled times
+4. python run_server.py run-rule popular_weekday   # smoke test
+5. python run_server.py serve           # or use systemd (deploy/ticker-calendar.service)
+
+If pip fails on curl_cffi: requirements.txt pins yfinance==0.2.54 (not 1.x).
+yfinance 1.x needs Python 3.10+ and curl_cffi>=0.15.
 Ubuntu setup
 
 cd ~/ticker-calendar
