@@ -1,0 +1,12 @@
+services:
+  ticker-calendar:
+    build: .
+    container_name: ticker-calendar
+    command: ["python", "run_server.py", "serve"]
+    restart: unless-stopped
+    environment:
+      PYTHONUNBUFFERED: "1"
+      TICKER_CALENDAR_LOG_DIR: /app/logs
+    volumes:
+      - ./logs:/app/logs
+      - ./ticker_calendar.db:/app/ticker_calendar.db

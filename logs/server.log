@@ -1,0 +1,2 @@
+2026-07-09 22:49:03,903 [INFO] ticker_calendar.server.job_runner: Starting scheduled check rule=popular_weekday time=10:30 run_id=1
+2026-07-09 22:49:03,918 [INFO] ticker_calendar.server.job_runner: Finished scheduled check rule=popular_weekday time=10:30 alerts_fired=0

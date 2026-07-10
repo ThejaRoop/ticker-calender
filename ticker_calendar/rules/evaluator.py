@@ -1,6 +1,12 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
-from zoneinfo import ZoneInfo
+
+try:
+    from zoneinfo import ZoneInfo
+except ImportError:  # pragma: no cover - Python 3.8 fallback
+    from backports.zoneinfo import ZoneInfo
 
 from ticker_calendar.config.alert_rules import (
     ALERT_MESSAGE,

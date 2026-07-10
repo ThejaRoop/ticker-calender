@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import calendar
 import tkinter as tk
 from datetime import date, timedelta

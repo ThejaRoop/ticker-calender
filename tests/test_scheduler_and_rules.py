@@ -1,6 +1,10 @@
 from datetime import date, datetime
 from unittest.mock import patch
-from zoneinfo import ZoneInfo
+
+try:
+    from zoneinfo import ZoneInfo
+except ImportError:  # pragma: no cover - Python 3.8 fallback
+    from backports.zoneinfo import ZoneInfo
 
 import pytest
 
