@@ -12,6 +12,9 @@ class Quote:
     open_price: float | None
     current_price: float | None
     bar_time: str | None = None
+    previous_close_price: float | None = None
+    day_low_price: float | None = None
+    opening_range_high: float | None = None
 
     @property
     def is_down(self) -> bool:
@@ -27,9 +30,9 @@ class Quote:
 
 
 def fetch_minute_ohlcv(symbol: str) -> pd.DataFrame:
-    """Fetch today's 1-minute OHLCV bars via yfinance (called only at scheduled check times)."""
+    """Fetch recent 1-minute OHLCV bars via yfinance (called only at scheduled check times)."""
     ticker = yf.Ticker(symbol.strip().upper())
-    df = ticker.history(period="1d", interval="1m", prepost=False)
+    df = ticker.history(period="2d", interval="1m", prepost=False)
     if df is None or df.empty:
         return pd.DataFrame()
     return df
@@ -54,11 +57,29 @@ def quote_from_ohlcv(symbol: str, df: pd.DataFrame) -> Quote:
     current = float(closes.iloc[-1])
     bar_time = str(closes.index[-1])
 
+    previous_close_price = None
+    try:
+        daily_closes = frame.groupby(frame.index.normalize())["Close"].last()
+        if len(daily_closes) >= 2:
+            previous_close_price = float(daily_closes.iloc[-2])
+    except Exception:
+        previous_close_price = None
+
+    day_low_price = None
+    opening_range_high = None
+    if "Low" in frame.columns and not frame["Low"].dropna().empty:
+        day_low_price = float(frame["Low"].dropna().min())
+    if "High" in frame.columns and len(frame) >= 15:
+        opening_range_high = float(frame["High"].iloc[:15].max())
+
     return Quote(
         ticker=symbol,
         open_price=day_open,
         current_price=current,
         bar_time=bar_time,
+        previous_close_price=previous_close_price,
+        day_low_price=day_low_price,
+        opening_range_high=opening_range_high,
     )
 
 

@@ -54,6 +54,67 @@ Popular stock down from open
 
 
 
+
+
+The rules are:
+
+Earnings today:
+
+If a stock has an earnings date today
+and the stock is down from its opening price
+and it is a weekday
+
+Earnings today:
+10:00, 10:15, 10:30, 10:45
+
+----------------
+Earnings next week:
+
+If it is Friday and the upcoming Monday-to-Sunday week has earnings dates
+this is mainly a setup alert for next week
+
+
+Earnings next week:
+10:00 on Friday
+----------------
+
+Popular weekday dip:
+
+If it is Monday, Tuesday, or Wednesday
+and one of the popular stocks is down from its opening price..
+Popular weekday dip:
+10:30 on Monday, Tuesday, or Wednesday
+
+----------------
+
+Popular Friday dip:
+
+If it is Friday
+and one of the popular stocks is down from its opening price
+
+
+Popular Friday dip:
+10:00, 10:15, 10:30, 10:45 on Friday
+---------------------
+The app checks at these times in Eastern Time:
+
+An alert is triggered only if:
+the current time matches one of those check points,
+it is a trading day and the market is open between 9:30 AM and 4:00 PM ET,
+the stock condition is met.
+
+---------------------
+
+
+
+
+
+
+
+
+
+
+
 C:\Users\nagis\ticker-calendar\plugin_earnings_dates.py
 
 run this script, to populate dates in to the calender for tickers
@@ -81,6 +142,7 @@ export NTFY_TOPIC=test_myalerts
 
 # Test one rule manually
 python run_server.py run-rule earnings_today --time 10:00
+python run_server.py run-rule earnings_tomorrow --time 14:00
 
 # See all scheduled jobs
 python run_server.py list
@@ -98,3 +160,6 @@ tail -f logs/server.log   # job run details
 Run tests
 pip install -r requirements-dev.txt
 python -m pytest tests/ -v
+
+
+

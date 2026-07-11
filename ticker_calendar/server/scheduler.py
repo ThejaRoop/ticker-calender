@@ -11,6 +11,7 @@ from apscheduler.triggers.cron import CronTrigger
 from ticker_calendar.config.alert_rules import MARKET_TIMEZONE, MISFIRE_GRACE_SECONDS, SCHEDULED_CHECKS
 from ticker_calendar.server.heartbeat import write_heartbeat
 from ticker_calendar.server.job_runner import run_scheduled_check
+from ticker_calendar.server.retention import prune_retention
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +70,15 @@ def build_scheduler() -> BlockingScheduler:
         minutes=1,
         id="heartbeat",
         name="heartbeat",
+        replace_existing=True,
+    )
+
+    scheduler.add_job(
+        prune_retention,
+        "interval",
+        days=1,
+        id="retention",
+        name="retention-prune",
         replace_existing=True,
     )
 

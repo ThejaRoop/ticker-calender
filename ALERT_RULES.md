@@ -36,7 +36,21 @@ Only applies to source earning dates (not auto-generated 90-day recurrence entri
 
 ---
 
-## Rule 3 — Popular stocks weekday dip (Mon–Wed)
+## Rule 3 — Earnings Tomorrow (2 PM dip)
+
+| Field | Value |
+|-------|-------|
+| **ID** | `earnings_tomorrow` |
+| **When** | A ticker has an earning date **tomorrow** |
+| **Time window** | 2:00 PM ET |
+| **Price condition** | Stock is down from open at the 2:00 PM check (`current < open`) |
+| **Alert** | "There is a chance to buy call for {TICKER} (earnings tomorrow)" |
+
+This helps catch names that look like they may rebound by the close if earnings are scheduled for the next trading day.
+
+---
+
+## Rule 4 — Popular stocks weekday dip (Mon–Wed)
 
 | Field | Value |
 |-------|-------|
@@ -49,7 +63,7 @@ Only applies to source earning dates (not auto-generated 90-day recurrence entri
 
 ---
 
-## Rule 4 — Popular stocks list (management)
+## Rule 5 — Popular stocks list (management)
 
 | Field | Value |
 |-------|-------|
@@ -59,7 +73,7 @@ Only applies to source earning dates (not auto-generated 90-day recurrence entri
 
 ---
 
-## Rule 5 — Popular stocks Friday dip
+## Rule 6 — Popular stocks Friday dip
 
 | Field | Value |
 |-------|-------|
@@ -69,6 +83,45 @@ Only applies to source earning dates (not auto-generated 90-day recurrence entri
 | **Tickers** | Popular stocks list |
 | **Price condition** | Stock is down from open (`current < open`) |
 | **Alert** | "There is a chance to buy call for {TICKER}" |
+
+---
+
+## Rule 7 — Thursday Shakeout
+
+| Field | Value |
+|-------|-------|
+| **ID** | `thursday_shakeout` |
+| **When** | Thursday |
+| **Time window** | 11:00 AM ET |
+| **Tickers** | Popular stocks list |
+| **Price condition** | Current price is down more than 1.5% from the previous close |
+| **Alert** | "Thursday liquidity discount on {TICKER}" |
+
+---
+
+## Rule 8 — End-of-Day Reversal
+
+| Field | Value |
+|-------|-------|
+| **ID** | `eod_reversal` |
+| **When** | Monday–Thursday |
+| **Time window** | 3:30 PM ET |
+| **Tickers** | Popular stocks list |
+| **Price condition** | Stock is down from open but still above the day's low |
+| **Alert** | "Closing reversal setup for {TICKER}" |
+
+---
+
+## Rule 9 — Gap-Fill Momentum
+
+| Field | Value |
+|-------|-------|
+| **ID** | `gap_fill_trade` |
+| **When** | Daily |
+| **Time window** | 10:00 AM – 10:30 AM ET |
+| **Tickers** | Popular stocks list |
+| **Price condition** | Open is below the previous close and price is now above the opening-range high |
+| **Alert** | "Gap-fill momentum initiating for {TICKER}" |
 
 ---
 

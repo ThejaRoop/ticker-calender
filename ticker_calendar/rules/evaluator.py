@@ -10,14 +10,22 @@ except ImportError:  # pragma: no cover - Python 3.8 fallback
 
 from ticker_calendar.config.alert_rules import (
     ALERT_MESSAGE,
+    ALERT_MESSAGE_EOD_REVERSAL,
+    ALERT_MESSAGE_GAP_FILL,
     ALERT_MESSAGE_NEXT_WEEK,
+    ALERT_MESSAGE_THURSDAY_SHAKEOUT,
+    ALERT_MESSAGE_TOMORROW,
     MARKET_CLOSE,
     MARKET_OPEN,
     MARKET_TIMEZONE,
     RULE_EARNINGS_NEXT_WEEK,
     RULE_EARNINGS_TODAY,
+    RULE_EARNINGS_TOMORROW,
+    RULE_EOD_REVERSAL,
+    RULE_GAP_FILL_TRADE,
     RULE_POPULAR_FRIDAY,
     RULE_POPULAR_WEEKDAY,
+    RULE_THURSDAY_SHAKEOUT,
     RULES_BY_ID,
 )
 from ticker_calendar.db import alerts as alerts_db
@@ -78,11 +86,15 @@ def _maybe_add(
     *,
     quote: Quote | None = None,
     requires_down: bool = False,
+    condition=None,
 ) -> None:
     if not _should_fire(rule_id, ticker, alert_date):
         return
     if requires_down:
         if quote is None or not quote.is_down:
+            return
+    if condition is not None:
+        if quote is None or not condition(quote):
             return
     results.append(
         AlertCandidate(
@@ -144,6 +156,34 @@ def evaluate_earnings_next_week(today: date) -> list[AlertCandidate]:
     return results
 
 
+def evaluate_earnings_tomorrow(
+    today: date,
+    quotes: dict[str, Quote] | None = None,
+) -> list[AlertCandidate]:
+    rule = RULE_EARNINGS_TOMORROW
+    tomorrow = today + timedelta(days=1)
+    tickers = tickers_db.get_source_earnings_on(tomorrow)
+    if not tickers:
+        return []
+
+    if quotes is None:
+        quotes = get_quotes(tickers)
+
+    results: list[AlertCandidate] = []
+    for ticker in tickers:
+        _maybe_add(
+            results,
+            rule["id"],
+            rule["name"],
+            ticker,
+            ALERT_MESSAGE_TOMORROW.format(ticker=ticker),
+            today,
+            quote=quotes.get(ticker),
+            requires_down=rule["requires_down"],
+        )
+    return results
+
+
 def evaluate_popular_weekday(
     today: date,
     quotes: dict[str, Quote] | None = None,
@@ -198,11 +238,111 @@ def evaluate_popular_friday(
     return results
 
 
+def evaluate_thursday_shakeout(
+    today: date,
+    quotes: dict[str, Quote] | None = None,
+) -> list[AlertCandidate]:
+    rule = RULE_THURSDAY_SHAKEOUT
+    if today.weekday() not in rule["weekdays"]:
+        return []
+
+    symbols = get_symbols()
+    if quotes is None:
+        quotes = get_quotes(symbols)
+
+    results: list[AlertCandidate] = []
+    for ticker in symbols:
+        _maybe_add(
+            results,
+            rule["id"],
+            rule["name"],
+            ticker,
+            ALERT_MESSAGE_THURSDAY_SHAKEOUT.format(ticker=ticker),
+            today,
+            quote=quotes.get(ticker),
+            condition=lambda quote: (
+                quote.previous_close_price is not None
+                and quote.current_price is not None
+                and quote.previous_close_price > 0
+                and (quote.previous_close_price - quote.current_price) / quote.previous_close_price > 0.015
+            ),
+        )
+    return results
+
+
+def evaluate_eod_reversal(
+    today: date,
+    quotes: dict[str, Quote] | None = None,
+) -> list[AlertCandidate]:
+    rule = RULE_EOD_REVERSAL
+    if today.weekday() not in rule["weekdays"]:
+        return []
+
+    symbols = get_symbols()
+    if quotes is None:
+        quotes = get_quotes(symbols)
+
+    results: list[AlertCandidate] = []
+    for ticker in symbols:
+        _maybe_add(
+            results,
+            rule["id"],
+            rule["name"],
+            ticker,
+            ALERT_MESSAGE_EOD_REVERSAL.format(ticker=ticker),
+            today,
+            quote=quotes.get(ticker),
+            condition=lambda quote: (
+                quote.is_down
+                and quote.day_low_price is not None
+                and quote.current_price is not None
+                and quote.current_price > quote.day_low_price
+            ),
+        )
+    return results
+
+
+def evaluate_gap_fill_trade(
+    today: date,
+    quotes: dict[str, Quote] | None = None,
+) -> list[AlertCandidate]:
+    rule = RULE_GAP_FILL_TRADE
+
+    symbols = get_symbols()
+    if quotes is None:
+        quotes = get_quotes(symbols)
+
+    results: list[AlertCandidate] = []
+    for ticker in symbols:
+        _maybe_add(
+            results,
+            rule["id"],
+            rule["name"],
+            ticker,
+            ALERT_MESSAGE_GAP_FILL.format(ticker=ticker),
+            today,
+            quote=quotes.get(ticker),
+            condition=lambda quote: (
+                quote.previous_close_price is not None
+                and quote.open_price is not None
+                and quote.opening_range_high is not None
+                and quote.current_price is not None
+                and quote.open_price < quote.previous_close_price
+                and quote.current_price >= quote.opening_range_high
+            ),
+        )
+    return results
+
+
 _EVALUATORS = {
     "earnings_today": evaluate_earnings_today,
     "earnings_next_week": evaluate_earnings_next_week,
+    "earnings_tomorrow": evaluate_earnings_tomorrow,
     "popular_weekday": evaluate_popular_weekday,
     "popular_friday": evaluate_popular_friday,
+    "thursday_shakeout": evaluate_thursday_shakeout,
+    "eod_reversal": evaluate_eod_reversal,
+    "gap_fill_trade": evaluate_gap_fill_trade,
 }
 
 
@@ -218,7 +358,7 @@ def evaluate_rule(rule_id: str, now: datetime | None = None) -> list[AlertCandid
     today = now.date()
     evaluator = _EVALUATORS[rule_id]
 
-    if rule_id in ("earnings_today", "popular_weekday", "popular_friday"):
+    if rule_id in ("earnings_today", "earnings_tomorrow", "popular_weekday", "popular_friday"):
         return evaluator(today)
     return evaluator(today)
 
