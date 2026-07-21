@@ -41,9 +41,14 @@ def send_ntfy(
 
 def format_alert_message(candidate) -> str:
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    drop_line = ""
+    if getattr(candidate, "drop_pct", None) is not None:
+        drop_line = f"Drop: {candidate.drop_pct:.2f}%\n"
+
     return (
         f"{candidate.message}\n"
         f"Rule: {candidate.rule_name}\n"
         f"Ticker: {candidate.ticker}\n"
+        f"{drop_line}"
         f"Time: {timestamp}"
     )

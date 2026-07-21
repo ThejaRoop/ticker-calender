@@ -20,6 +20,7 @@ from ticker_calendar.rules.evaluator import (
     is_market_day,
     now_et,
 )
+from ticker_calendar.services.notification_service import format_alert_message
 from ticker_calendar.server.scheduler import list_scheduled_jobs, parse_weekdays
 
 
@@ -80,6 +81,20 @@ def test_popular_weekday_skips_when_up(mock_fired, mock_quotes, _symbols):
     wednesday = date(2026, 7, 8)
     results = evaluate_popular_weekday(wednesday)
     assert results == []
+
+
+def test_format_alert_message_includes_drop_percentage():
+    candidate = AlertCandidate(
+        rule_id="popular_weekday",
+        rule_name="Popular Stocks Weekday Dip",
+        ticker="MSFT",
+        message="There is a chance to buy call for MSFT",
+        alert_date=date(2026, 7, 8),
+        drop_pct=1.0,
+    )
+
+    rendered = format_alert_message(candidate)
+    assert "Drop: 1.00%" in rendered
 
 
 @patch("ticker_calendar.rules.evaluator.tickers_db.get_source_earnings_between")

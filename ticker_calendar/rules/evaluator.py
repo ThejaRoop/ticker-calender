@@ -41,6 +41,7 @@ class AlertCandidate:
     ticker: str
     message: str
     alert_date: date
+    drop_pct: float | None = None
 
 
 def now_et() -> datetime:
@@ -87,6 +88,7 @@ def _maybe_add(
     quote: Quote | None = None,
     requires_down: bool = False,
     condition=None,
+    drop_pct: float | None = None,
 ) -> None:
     if not _should_fire(rule_id, ticker, alert_date):
         return
@@ -96,13 +98,16 @@ def _maybe_add(
     if condition is not None:
         if quote is None or not condition(quote):
             return
+    if drop_pct is None and quote is not None:
+        drop_pct = _drop_pct(quote)
     results.append(
         AlertCandidate(
             rule_id=rule_id,
             rule_name=rule_name,
             ticker=ticker,
-            message=message,
+            message=_decorate_message(message, drop_pct),
             alert_date=alert_date,
+            drop_pct=drop_pct,
         )
     )
 
@@ -121,6 +126,7 @@ def evaluate_earnings_today(
 
     results: list[AlertCandidate] = []
     for ticker in tickers:
+        quote = quotes.get(ticker)
         _maybe_add(
             results,
             rule["id"],
@@ -128,8 +134,9 @@ def evaluate_earnings_today(
             ticker,
             ALERT_MESSAGE.format(ticker=ticker),
             today,
-            quote=quotes.get(ticker),
+            quote=quote,
             requires_down=rule["requires_down"],
+            drop_pct=_drop_pct(quote),
         )
     return results
 
@@ -171,6 +178,7 @@ def evaluate_earnings_tomorrow(
 
     results: list[AlertCandidate] = []
     for ticker in tickers:
+        quote = quotes.get(ticker)
         _maybe_add(
             results,
             rule["id"],
@@ -178,8 +186,9 @@ def evaluate_earnings_tomorrow(
             ticker,
             ALERT_MESSAGE_TOMORROW.format(ticker=ticker),
             today,
-            quote=quotes.get(ticker),
+            quote=quote,
             requires_down=rule["requires_down"],
+            drop_pct=_drop_pct(quote),
         )
     return results
 
@@ -198,6 +207,7 @@ def evaluate_popular_weekday(
 
     results: list[AlertCandidate] = []
     for ticker in symbols:
+        quote = quotes.get(ticker)
         _maybe_add(
             results,
             rule["id"],
@@ -205,8 +215,9 @@ def evaluate_popular_weekday(
             ticker,
             ALERT_MESSAGE.format(ticker=ticker),
             today,
-            quote=quotes.get(ticker),
+            quote=quote,
             requires_down=rule["requires_down"],
+            drop_pct=_drop_pct(quote),
         )
     return results
 
@@ -225,6 +236,7 @@ def evaluate_popular_friday(
 
     results: list[AlertCandidate] = []
     for ticker in symbols:
+        quote = quotes.get(ticker)
         _maybe_add(
             results,
             rule["id"],
@@ -232,10 +244,25 @@ def evaluate_popular_friday(
             ticker,
             ALERT_MESSAGE.format(ticker=ticker),
             today,
-            quote=quotes.get(ticker),
+            quote=quote,
             requires_down=rule["requires_down"],
+            drop_pct=_drop_pct(quote),
         )
     return results
+
+
+def _drop_pct(quote: Quote | None) -> float | None:
+    if quote is None:
+        return None
+    if quote.open_price in (None, 0) or quote.current_price is None:
+        return None
+    return round(((quote.open_price - quote.current_price) / quote.open_price) * 100, 2)
+
+
+def _decorate_message(message: str, drop_pct: float | None) -> str:
+    if drop_pct is None:
+        return message
+    return f"{message} (drop {drop_pct:.2f}%)"
 
 
 def evaluate_thursday_shakeout(
@@ -252,6 +279,7 @@ def evaluate_thursday_shakeout(
 
     results: list[AlertCandidate] = []
     for ticker in symbols:
+        quote = quotes.get(ticker)
         _maybe_add(
             results,
             rule["id"],
@@ -259,13 +287,14 @@ def evaluate_thursday_shakeout(
             ticker,
             ALERT_MESSAGE_THURSDAY_SHAKEOUT.format(ticker=ticker),
             today,
-            quote=quotes.get(ticker),
+            quote=quote,
             condition=lambda quote: (
                 quote.previous_close_price is not None
                 and quote.current_price is not None
                 and quote.previous_close_price > 0
                 and (quote.previous_close_price - quote.current_price) / quote.previous_close_price > 0.015
             ),
+            drop_pct=_drop_pct(quote),
         )
     return results
 
@@ -284,6 +313,7 @@ def evaluate_eod_reversal(
 
     results: list[AlertCandidate] = []
     for ticker in symbols:
+        quote = quotes.get(ticker)
         _maybe_add(
             results,
             rule["id"],
@@ -291,13 +321,14 @@ def evaluate_eod_reversal(
             ticker,
             ALERT_MESSAGE_EOD_REVERSAL.format(ticker=ticker),
             today,
-            quote=quotes.get(ticker),
+            quote=quote,
             condition=lambda quote: (
                 quote.is_down
                 and quote.day_low_price is not None
                 and quote.current_price is not None
                 and quote.current_price > quote.day_low_price
             ),
+            drop_pct=_drop_pct(quote),
         )
     return results
 
@@ -314,6 +345,7 @@ def evaluate_gap_fill_trade(
 
     results: list[AlertCandidate] = []
     for ticker in symbols:
+        quote = quotes.get(ticker)
         _maybe_add(
             results,
             rule["id"],
@@ -321,7 +353,7 @@ def evaluate_gap_fill_trade(
             ticker,
             ALERT_MESSAGE_GAP_FILL.format(ticker=ticker),
             today,
-            quote=quotes.get(ticker),
+            quote=quote,
             condition=lambda quote: (
                 quote.previous_close_price is not None
                 and quote.open_price is not None
@@ -330,6 +362,7 @@ def evaluate_gap_fill_trade(
                 and quote.open_price < quote.previous_close_price
                 and quote.current_price >= quote.opening_range_high
             ),
+            drop_pct=_drop_pct(quote),
         )
     return results
 
