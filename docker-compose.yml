@@ -7,6 +7,7 @@ services:
     environment:
       PYTHONUNBUFFERED: "1"
       TICKER_CALENDAR_LOG_DIR: /app/logs
+      TICKER_CALENDAR_DB: /app/data/ticker_calendar.db
     volumes:
       - ./logs:/app/logs
-      - ./ticker_calendar.db:/app/ticker_calendar.db
+      - ./data:/app/data

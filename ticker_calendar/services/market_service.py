@@ -50,15 +50,7 @@ def quote_from_ohlcv(symbol: str, df: pd.DataFrame) -> Quote:
     if hasattr(frame.index, "tz") and frame.index.tz is not None:
         frame.index = frame.index.tz_convert("America/New_York")
 
-    opens = frame["Open"].dropna()
-    closes = frame["Close"].dropna()
-    if opens.empty or closes.empty:
-        return Quote(ticker=symbol, open_price=None, current_price=None)
-
-    day_open = float(opens.iloc[0])
-    current = float(closes.iloc[-1])
-    bar_time = str(closes.index[-1])
-
+    # Previous close is derived from the full multi-day window.
     previous_close_price = None
     try:
         daily_closes = frame.groupby(frame.index.normalize())["Close"].last()
@@ -67,12 +59,34 @@ def quote_from_ohlcv(symbol: str, df: pd.DataFrame) -> Quote:
     except Exception:
         previous_close_price = None
 
+    # Intraday metrics (open, current, low, opening range) must come from the
+    # latest trading day only; the window may span more than one session.
+    try:
+        latest_day = frame.index.normalize().max()
+        today_frame = frame[frame.index.normalize() == latest_day]
+    except Exception:
+        today_frame = frame
+
+    opens = today_frame["Open"].dropna()
+    closes = today_frame["Close"].dropna()
+    if opens.empty or closes.empty:
+        return Quote(
+            ticker=symbol,
+            open_price=None,
+            current_price=None,
+            previous_close_price=previous_close_price,
+        )
+
+    day_open = float(opens.iloc[0])
+    current = float(closes.iloc[-1])
+    bar_time = str(closes.index[-1])
+
     day_low_price = None
     opening_range_high = None
-    if "Low" in frame.columns and not frame["Low"].dropna().empty:
-        day_low_price = float(frame["Low"].dropna().min())
-    if "High" in frame.columns and len(frame) >= 15:
-        opening_range_high = float(frame["High"].iloc[:15].max())
+    if "Low" in today_frame.columns and not today_frame["Low"].dropna().empty:
+        day_low_price = float(today_frame["Low"].dropna().min())
+    if "High" in today_frame.columns and len(today_frame) >= 15:
+        opening_range_high = float(today_frame["High"].iloc[:15].max())
 
     return Quote(
         ticker=symbol,
