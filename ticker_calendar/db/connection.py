@@ -1,5 +1,9 @@
-import os
+from __future__ import annotations
+
+import logging
 import sqlite3
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 
 DB_PATH = Path(
@@ -10,10 +14,24 @@ DB_PATH = Path(
 )
 
 
-def connect() -> sqlite3.Connection:
+@contextmanager
+def connect() -> Iterator[sqlite3.Connection]:
+    """Open a SQLite connection, commit on success, roll back on error, always close.
+
+    Using this as a context manager (``with connect() as conn:``) guarantees the
+    connection is closed even when a query raises, avoiding leaked file handles,
+    and surfaces database errors to the caller instead of leaving them implicit.
+    """
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
-    return conn
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
 
 def fetch_by_id(conn: sqlite3.Connection, table: str, row_id: int) -> sqlite3.Row | None:

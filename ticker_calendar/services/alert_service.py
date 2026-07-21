@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import logging
 import threading
 from collections.abc import Callable
 
 from ticker_calendar.config.alert_rules import POLL_INTERVAL_SECONDS
 from ticker_calendar.db import alerts as alerts_db
 from ticker_calendar.rules.evaluator import AlertCandidate, evaluate_all, is_market_hours
+
+logger = logging.getLogger(__name__)
 
 
 class AlertMonitor:
@@ -42,7 +45,10 @@ class AlertMonitor:
     def _run(self) -> None:
         while not self._stop.is_set():
             if is_market_hours():
-                self.check_now()
+                try:
+                    self.check_now()
+                except Exception:
+                    logger.exception("Alert monitor check failed; will retry next interval")
             self._stop.wait(POLL_INTERVAL_SECONDS)
 
 

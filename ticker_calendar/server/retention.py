@@ -46,7 +46,8 @@ def prune_retention(retention_days: int = 3) -> dict[str, int]:
                 if datetime.fromtimestamp(path.stat().st_mtime) < local_cutoff:
                     path.unlink()
                     logs_deleted += 1
-            except OSError:
+            except OSError as exc:
+                logger.warning("Could not prune log file %s: %s", path, exc)
                 continue
 
     logger.info(

@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 
 import pandas as pd
 import yfinance as yf
 
 from ticker_calendar.utils import normalize_ticker
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -56,7 +59,8 @@ def quote_from_ohlcv(symbol: str, df: pd.DataFrame) -> Quote:
         daily_closes = frame.groupby(frame.index.normalize())["Close"].last()
         if len(daily_closes) >= 2:
             previous_close_price = float(daily_closes.iloc[-2])
-    except Exception:
+    except (KeyError, ValueError, TypeError) as exc:
+        logger.warning("Could not derive previous close for %s: %s", symbol, exc)
         previous_close_price = None
 
     # Intraday metrics (open, current, low, opening range) must come from the
@@ -114,6 +118,7 @@ def get_quotes(symbols: list[str]) -> dict[str, Quote]:
             df = fetch_minute_ohlcv(symbol)
             result[symbol] = quote_from_ohlcv(symbol, df)
         except Exception:
+            logger.exception("Failed to fetch quote for %s; returning empty quote", symbol)
             result[symbol] = Quote(ticker=symbol, open_price=None, current_price=None)
 
     return result
