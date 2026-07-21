@@ -3,8 +3,14 @@ from __future__ import annotations
 import logging
 from datetime import datetime
 
+try:
+    from zoneinfo import ZoneInfo
+except ImportError:  # pragma: no cover - Python 3.8 fallback
+    from backports.zoneinfo import ZoneInfo
+
 import requests
 
+from ticker_calendar.config.alert_rules import MARKET_TIMEZONE
 from ticker_calendar.config.server import NTFY_TOPIC, NTFY_TOPIC_IS_DEFAULT, NTFY_URL
 
 logger = logging.getLogger(__name__)
@@ -57,9 +63,9 @@ def send_ntfy(
 
 
 def format_alert_message(candidate) -> str:
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    timestamp = datetime.now(ZoneInfo(MARKET_TIMEZONE)).strftime("%Y-%m-%d %H:%M:%S %Z")
     drop_line = ""
-    if getattr(candidate, "drop_pct", None) is not None:
+    if candidate.drop_pct is not None:
         drop_line = f"Drop: {candidate.drop_pct:.2f}%\n"
 
     return (

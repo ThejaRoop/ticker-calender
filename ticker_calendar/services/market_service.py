@@ -5,6 +5,8 @@ from dataclasses import dataclass
 import pandas as pd
 import yfinance as yf
 
+from ticker_calendar.utils import normalize_ticker
+
 
 @dataclass
 class Quote:
@@ -31,7 +33,7 @@ class Quote:
 
 def fetch_minute_ohlcv(symbol: str) -> pd.DataFrame:
     """Fetch recent 1-minute OHLCV bars via yfinance (called only at scheduled check times)."""
-    ticker = yf.Ticker(symbol.strip().upper())
+    ticker = yf.Ticker(normalize_ticker(symbol))
     df = ticker.history(period="2d", interval="1m", prepost=False)
     if df is None or df.empty:
         return pd.DataFrame()
@@ -40,7 +42,7 @@ def fetch_minute_ohlcv(symbol: str) -> pd.DataFrame:
 
 def quote_from_ohlcv(symbol: str, df: pd.DataFrame) -> Quote:
     """Derive day-open vs latest-minute close from 1m bars."""
-    symbol = symbol.strip().upper()
+    symbol = normalize_ticker(symbol)
     if df is None or df.empty:
         return Quote(ticker=symbol, open_price=None, current_price=None)
 
@@ -48,15 +50,7 @@ def quote_from_ohlcv(symbol: str, df: pd.DataFrame) -> Quote:
     if hasattr(frame.index, "tz") and frame.index.tz is not None:
         frame.index = frame.index.tz_convert("America/New_York")
 
-    opens = frame["Open"].dropna()
-    closes = frame["Close"].dropna()
-    if opens.empty or closes.empty:
-        return Quote(ticker=symbol, open_price=None, current_price=None)
-
-    day_open = float(opens.iloc[0])
-    current = float(closes.iloc[-1])
-    bar_time = str(closes.index[-1])
-
+    # Previous close is derived from the full multi-day window.
     previous_close_price = None
     try:
         daily_closes = frame.groupby(frame.index.normalize())["Close"].last()
@@ -65,12 +59,34 @@ def quote_from_ohlcv(symbol: str, df: pd.DataFrame) -> Quote:
     except Exception:
         previous_close_price = None
 
+    # Intraday metrics (open, current, low, opening range) must come from the
+    # latest trading day only; the window may span more than one session.
+    try:
+        latest_day = frame.index.normalize().max()
+        today_frame = frame[frame.index.normalize() == latest_day]
+    except Exception:
+        today_frame = frame
+
+    opens = today_frame["Open"].dropna()
+    closes = today_frame["Close"].dropna()
+    if opens.empty or closes.empty:
+        return Quote(
+            ticker=symbol,
+            open_price=None,
+            current_price=None,
+            previous_close_price=previous_close_price,
+        )
+
+    day_open = float(opens.iloc[0])
+    current = float(closes.iloc[-1])
+    bar_time = str(closes.index[-1])
+
     day_low_price = None
     opening_range_high = None
-    if "Low" in frame.columns and not frame["Low"].dropna().empty:
-        day_low_price = float(frame["Low"].dropna().min())
-    if "High" in frame.columns and len(frame) >= 15:
-        opening_range_high = float(frame["High"].iloc[:15].max())
+    if "Low" in today_frame.columns and not today_frame["Low"].dropna().empty:
+        day_low_price = float(today_frame["Low"].dropna().min())
+    if "High" in today_frame.columns and len(today_frame) >= 15:
+        opening_range_high = float(today_frame["High"].iloc[:15].max())
 
     return Quote(
         ticker=symbol,
@@ -84,12 +100,13 @@ def quote_from_ohlcv(symbol: str, df: pd.DataFrame) -> Quote:
 
 
 def get_quote(symbol: str) -> Quote:
-    return get_quotes([symbol]).get(symbol.upper(), Quote(symbol.upper(), None, None))
+    symbol = normalize_ticker(symbol)
+    return get_quotes([symbol]).get(symbol, Quote(symbol, None, None))
 
 
 def get_quotes(symbols: list[str]) -> dict[str, Quote]:
     """Batch-fetch minute OHLCV and build quotes. One yfinance call per symbol at job time."""
-    tickers = [s.strip().upper() for s in symbols if s.strip()]
+    tickers = [normalize_ticker(s) for s in symbols if s.strip()]
     result: dict[str, Quote] = {}
 
     for symbol in tickers:
