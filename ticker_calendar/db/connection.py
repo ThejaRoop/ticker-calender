@@ -1,13 +1,34 @@
+from __future__ import annotations
+
+import logging
 import sqlite3
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 DB_PATH = Path(__file__).resolve().parent.parent.parent / "ticker_calendar.db"
 
 
-def connect() -> sqlite3.Connection:
+@contextmanager
+def connect() -> Iterator[sqlite3.Connection]:
+    """Open a SQLite connection, commit on success, roll back on error, always close.
+
+    Using this as a context manager (``with connect() as conn:``) guarantees the
+    connection is closed even when a query raises, avoiding leaked file handles,
+    and surfaces database errors to the caller instead of leaving them implicit.
+    """
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
-    return conn
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
 
 def init_db() -> None:

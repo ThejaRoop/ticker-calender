@@ -34,4 +34,4 @@ def test_fetch_minute_ohlcv_called_at_job_time(mock_yf):
     fetch_minute_ohlcv("MSFT")
 
     mock_yf.Ticker.assert_called_once_with("MSFT")
-    mock_ticker.history.assert_called_once_with(period="1d", interval="1m", prepost=False)
+    mock_ticker.history.assert_called_once_with(period="2d", interval="1m", prepost=False)

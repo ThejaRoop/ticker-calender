@@ -390,9 +390,6 @@ def evaluate_rule(rule_id: str, now: datetime | None = None) -> list[AlertCandid
 
     today = now.date()
     evaluator = _EVALUATORS[rule_id]
-
-    if rule_id in ("earnings_today", "earnings_tomorrow", "popular_weekday", "popular_friday"):
-        return evaluator(today)
     return evaluator(today)
 
 

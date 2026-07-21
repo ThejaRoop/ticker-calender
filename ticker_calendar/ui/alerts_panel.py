@@ -1,7 +1,10 @@
+import logging
 import tkinter as tk
-from tkinter import ttk
+from tkinter import messagebox, ttk
 
 from ticker_calendar.services import alert_service
+
+logger = logging.getLogger(__name__)
 
 
 class AlertsPanel(ttk.Frame):
@@ -63,7 +66,17 @@ class AlertsPanel(ttk.Frame):
             )
 
     def _check_now(self):
-        fired = alert_service.AlertMonitor().check_now()
+        try:
+            fired = alert_service.AlertMonitor().check_now()
+        except Exception as exc:
+            logger.exception("Manual alert check failed")
+            self.status_label.configure(text="Manual check failed — see logs")
+            messagebox.showerror(
+                "Check failed",
+                f"Could not complete the alert check:\n\n{exc}",
+                parent=self,
+            )
+            return
         self.refresh()
         self.status_label.configure(
             text=f"Manual check complete — {len(fired)} new alert(s)"
