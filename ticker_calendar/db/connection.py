@@ -16,6 +16,13 @@ def connect() -> sqlite3.Connection:
     return conn
 
 
+def fetch_by_id(conn: sqlite3.Connection, table: str, row_id: int) -> sqlite3.Row | None:
+    """Return the row with the given primary-key id from ``table`` (or None)."""
+    return conn.execute(
+        f"SELECT * FROM {table} WHERE id = ?", (row_id,)
+    ).fetchone()
+
+
 def init_db() -> None:
     from ticker_calendar.db import tickers, popular_tickers, alerts, job_runs
 

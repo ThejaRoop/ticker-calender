@@ -5,6 +5,8 @@ from dataclasses import dataclass
 import pandas as pd
 import yfinance as yf
 
+from ticker_calendar.utils import normalize_ticker
+
 
 @dataclass
 class Quote:
@@ -31,7 +33,7 @@ class Quote:
 
 def fetch_minute_ohlcv(symbol: str) -> pd.DataFrame:
     """Fetch recent 1-minute OHLCV bars via yfinance (called only at scheduled check times)."""
-    ticker = yf.Ticker(symbol.strip().upper())
+    ticker = yf.Ticker(normalize_ticker(symbol))
     df = ticker.history(period="2d", interval="1m", prepost=False)
     if df is None or df.empty:
         return pd.DataFrame()
@@ -40,7 +42,7 @@ def fetch_minute_ohlcv(symbol: str) -> pd.DataFrame:
 
 def quote_from_ohlcv(symbol: str, df: pd.DataFrame) -> Quote:
     """Derive day-open vs latest-minute close from 1m bars."""
-    symbol = symbol.strip().upper()
+    symbol = normalize_ticker(symbol)
     if df is None or df.empty:
         return Quote(ticker=symbol, open_price=None, current_price=None)
 
@@ -98,12 +100,13 @@ def quote_from_ohlcv(symbol: str, df: pd.DataFrame) -> Quote:
 
 
 def get_quote(symbol: str) -> Quote:
-    return get_quotes([symbol]).get(symbol.upper(), Quote(symbol.upper(), None, None))
+    symbol = normalize_ticker(symbol)
+    return get_quotes([symbol]).get(symbol, Quote(symbol, None, None))
 
 
 def get_quotes(symbols: list[str]) -> dict[str, Quote]:
     """Batch-fetch minute OHLCV and build quotes. One yfinance call per symbol at job time."""
-    tickers = [s.strip().upper() for s in symbols if s.strip()]
+    tickers = [normalize_ticker(s) for s in symbols if s.strip()]
     result: dict[str, Quote] = {}
 
     for symbol in tickers:
