@@ -5,7 +5,8 @@ import sqlite3
 from dataclasses import dataclass
 from datetime import date, datetime
 
-from ticker_calendar.db.connection import connect
+from ticker_calendar.db.connection import connect, fetch_by_id
+from ticker_calendar.utils import normalize_ticker
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +55,7 @@ def was_fired(rule_id: str, ticker: str, alert_date: date) -> bool:
             SELECT 1 FROM fired_alerts
             WHERE rule_id = ? AND ticker = ? AND alert_date = ?
             """,
-            (rule_id, ticker.upper(), alert_date.isoformat()),
+            (rule_id, normalize_ticker(ticker), alert_date.isoformat()),
         ).fetchone()
     return row is not None
 
@@ -69,16 +70,14 @@ def record(rule_id: str, ticker: str, alert_date: date, message: str) -> AlertRe
                 INSERT INTO fired_alerts (rule_id, ticker, alert_date, message)
                 VALUES (?, ?, ?, ?)
                 """,
-                (rule_id, ticker.upper(), alert_date.isoformat(), message),
+                (rule_id, normalize_ticker(ticker), alert_date.isoformat(), message),
             )
         except sqlite3.IntegrityError:
             logger.debug(
                 "Alert already recorded rule=%s ticker=%s date=%s", rule_id, ticker, alert_date
             )
             return None
-        row = conn.execute(
-            "SELECT * FROM fired_alerts WHERE id = ?", (cursor.lastrowid,)
-        ).fetchone()
+        row = fetch_by_id(conn, "fired_alerts", cursor.lastrowid)
     return _row_to_alert(row) if row else None
 
 

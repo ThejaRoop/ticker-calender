@@ -5,7 +5,8 @@ from dataclasses import dataclass
 from datetime import date
 
 from ticker_calendar.config.settings import CALENDAR_END, CALENDAR_START
-from ticker_calendar.db.connection import connect
+from ticker_calendar.db.connection import connect, fetch_by_id
+from ticker_calendar.utils import normalize_ticker
 
 
 @dataclass
@@ -106,7 +107,7 @@ def get_source_earnings_between(start: date, end: date) -> list[tuple[str, date]
 
 
 def add_ticker(ticker: str, entry_date: date, source_date: date) -> TickerEntry | None:
-    ticker = ticker.strip().upper()
+    ticker = normalize_ticker(ticker)
     if not ticker:
         return None
     if entry_date < CALENDAR_START or entry_date > CALENDAR_END:
@@ -123,21 +124,17 @@ def add_ticker(ticker: str, entry_date: date, source_date: date) -> TickerEntry 
             )
         except sqlite3.IntegrityError:
             return None
-        row = conn.execute(
-            "SELECT * FROM ticker_entries WHERE id = ?", (cursor.lastrowid,)
-        ).fetchone()
+        row = fetch_by_id(conn, "ticker_entries", cursor.lastrowid)
     return _row_to_entry(row) if row else None
 
 
 def update_ticker(entry_id: int, new_ticker: str) -> TickerEntry | None:
-    new_ticker = new_ticker.strip().upper()
+    new_ticker = normalize_ticker(new_ticker)
     if not new_ticker:
         return None
 
     with connect() as conn:
-        entry = conn.execute(
-            "SELECT * FROM ticker_entries WHERE id = ?", (entry_id,)
-        ).fetchone()
+        entry = fetch_by_id(conn, "ticker_entries", entry_id)
         if not entry:
             return None
 
@@ -149,9 +146,7 @@ def update_ticker(entry_id: int, new_ticker: str) -> TickerEntry | None:
         except sqlite3.IntegrityError:
             return None
 
-        row = conn.execute(
-            "SELECT * FROM ticker_entries WHERE id = ?", (entry_id,)
-        ).fetchone()
+        row = fetch_by_id(conn, "ticker_entries", entry_id)
     return _row_to_entry(row) if row else None
 
 
@@ -164,7 +159,7 @@ def delete_ticker(entry_id: int) -> bool:
 
 
 def delete_ticker_series(source_date: date, ticker: str) -> int:
-    ticker = ticker.strip().upper()
+    ticker = normalize_ticker(ticker)
     with connect() as conn:
         cursor = conn.execute(
             """
@@ -178,7 +173,5 @@ def delete_ticker_series(source_date: date, ticker: str) -> int:
 
 def get_entry(entry_id: int) -> TickerEntry | None:
     with connect() as conn:
-        row = conn.execute(
-            "SELECT * FROM ticker_entries WHERE id = ?", (entry_id,)
-        ).fetchone()
+        row = fetch_by_id(conn, "ticker_entries", entry_id)
     return _row_to_entry(row) if row else None

@@ -6,7 +6,8 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from ticker_calendar.config.defaults import DEFAULT_POPULAR_TICKERS
-from ticker_calendar.db.connection import connect
+from ticker_calendar.db.connection import connect, fetch_by_id
+from ticker_calendar.utils import normalize_ticker
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +40,7 @@ def seed_defaults() -> None:
             try:
                 conn.execute(
                     "INSERT INTO popular_tickers (ticker) VALUES (?)",
-                    (ticker.upper(),),
+                    (normalize_ticker(ticker),),
                 )
             except sqlite3.IntegrityError:
                 logger.debug("Default popular ticker already seeded: %s", ticker)
@@ -61,7 +62,7 @@ def get_symbols() -> list[str]:
 
 
 def add(ticker: str) -> PopularTicker | None:
-    ticker = ticker.strip().upper()
+    ticker = normalize_ticker(ticker)
     if not ticker:
         return None
     with connect() as conn:
@@ -73,14 +74,12 @@ def add(ticker: str) -> PopularTicker | None:
         except sqlite3.IntegrityError:
             logger.debug("Popular ticker already exists: %s", ticker)
             return None
-        row = conn.execute(
-            "SELECT * FROM popular_tickers WHERE id = ?", (cursor.lastrowid,)
-        ).fetchone()
+        row = fetch_by_id(conn, "popular_tickers", cursor.lastrowid)
     return PopularTicker(id=row["id"], ticker=row["ticker"], added_at=row["added_at"]) if row else None
 
 
 def remove(ticker: str) -> bool:
-    ticker = ticker.strip().upper()
+    ticker = normalize_ticker(ticker)
     with connect() as conn:
         cursor = conn.execute(
             "DELETE FROM popular_tickers WHERE ticker = ?", (ticker,)
