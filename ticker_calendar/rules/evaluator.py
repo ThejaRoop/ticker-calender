@@ -68,27 +68,19 @@ def _next_week_range(from_date: date) -> tuple[date, date]:
     return next_monday, next_sunday
 
 
-def _prior_friday_for_next_week(from_date: date) -> date:
-    next_monday, _ = _next_week_range(from_date)
-    return next_monday - timedelta(days=3)
-
-
 def _should_fire(rule_id: str, ticker: str, alert_date: date) -> bool:
     return not alerts_db.was_fired(rule_id, ticker, alert_date)
 
 
 def _drop_pct(quote: Quote | None) -> float | None:
+    """Percent decline from the day's open. Only meaningful when the stock is
+    actually below its open, so non-positive values return None."""
     if quote is None:
         return None
     if quote.open_price in (None, 0) or quote.current_price is None:
         return None
-    return round(((quote.open_price - quote.current_price) / quote.open_price) * 100, 2)
-
-
-def _decorate_message(message: str, drop_pct: float | None) -> str:
-    if drop_pct is None:
-        return message
-    return f"{message} (drop {drop_pct:.2f}%)"
+    pct = round(((quote.open_price - quote.current_price) / quote.open_price) * 100, 2)
+    return pct if pct > 0 else None
 
 
 def _maybe_add(
@@ -112,14 +104,12 @@ def _maybe_add(
     if condition is not None:
         if quote is None or not condition(quote):
             return
-    if drop_pct is None and quote is not None:
-        drop_pct = _drop_pct(quote)
     results.append(
         AlertCandidate(
             rule_id=rule_id,
             rule_name=rule_name,
             ticker=ticker,
-            message=_decorate_message(message, drop_pct),
+            message=message,
             alert_date=alert_date,
             drop_pct=drop_pct,
         )
@@ -134,6 +124,7 @@ def _build_candidates(
     quotes: dict[str, Quote] | None,
     *,
     condition=None,
+    include_drop: bool = True,
 ) -> list[AlertCandidate]:
     """Shared loop: fetch quotes if needed and evaluate each ticker against a rule."""
     if not tickers:
@@ -154,7 +145,7 @@ def _build_candidates(
             quote=quote,
             requires_down=rule.get("requires_down", False),
             condition=condition,
-            drop_pct=_drop_pct(quote),
+            drop_pct=_drop_pct(quote) if include_drop else None,
         )
     return results
 
@@ -177,12 +168,19 @@ def _evaluate_symbol_rule(
     quotes: dict[str, Quote] | None,
     *,
     condition=None,
+    include_drop: bool = True,
 ) -> list[AlertCandidate]:
     weekdays = rule.get("weekdays")
     if weekdays is not None and today.weekday() not in weekdays:
         return []
     return _build_candidates(
-        rule, get_symbols(), today, message_template, quotes, condition=condition
+        rule,
+        get_symbols(),
+        today,
+        message_template,
+        quotes,
+        condition=condition,
+        include_drop=include_drop,
     )
 
 
@@ -196,8 +194,6 @@ def evaluate_earnings_today(
 def evaluate_earnings_next_week(today: date) -> list[AlertCandidate]:
     rule = RULE_EARNINGS_NEXT_WEEK
     if today.weekday() != 4:
-        return []
-    if today != _prior_friday_for_next_week(today):
         return []
 
     next_monday, next_sunday = _next_week_range(today)
@@ -278,6 +274,7 @@ def evaluate_thursday_shakeout(
         ALERT_MESSAGE_THURSDAY_SHAKEOUT,
         quotes,
         condition=_thursday_shakeout_condition,
+        include_drop=False,
     )
 
 
@@ -304,6 +301,7 @@ def evaluate_gap_fill_trade(
         ALERT_MESSAGE_GAP_FILL,
         quotes,
         condition=_gap_fill_condition,
+        include_drop=False,
     )
 
 

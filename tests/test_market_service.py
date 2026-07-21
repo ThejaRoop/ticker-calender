@@ -35,3 +35,27 @@ def test_fetch_minute_ohlcv_called_at_job_time(mock_yf):
 
     mock_yf.Ticker.assert_called_once_with("MSFT")
     mock_ticker.history.assert_called_once_with(period="2d", interval="1m", prepost=False)
+
+
+def test_quote_from_ohlcv_isolates_latest_day_with_multiday_window():
+    yesterday = pd.date_range("2026-07-07 09:30", periods=3, freq="1min", tz="America/New_York")
+    today = pd.date_range("2026-07-08 09:30", periods=3, freq="1min", tz="America/New_York")
+    index = yesterday.append(today)
+    df = pd.DataFrame(
+        {
+            "Open": [50.0, 50.0, 50.0, 100.0, 100.0, 100.0],
+            "High": [60.0, 60.0, 60.0, 101.0, 101.0, 100.5],
+            "Low": [40.0, 40.0, 40.0, 99.5, 99.0, 98.5],
+            "Close": [55.0, 55.0, 55.0, 100.5, 99.5, 98.0],
+            "Volume": [1000] * 6,
+        },
+        index=index,
+    )
+    quote = quote_from_ohlcv("MSFT", df)
+    # Open/current/low must come from today only, not the prior session.
+    assert quote.open_price == 100.0
+    assert quote.current_price == 98.0
+    assert quote.day_low_price == 98.5
+    # Previous close is the prior session's last close.
+    assert quote.previous_close_price == 55.0
+    assert quote.is_down is True
