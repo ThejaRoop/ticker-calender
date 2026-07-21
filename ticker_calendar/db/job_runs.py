@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
 
 from ticker_calendar.db.connection import connect
+from ticker_calendar.utils import now_iso
 
 
 @dataclass
@@ -39,7 +39,7 @@ def create_table(conn) -> None:
 
 
 def start_run(rule_id: str, scheduled_time: str) -> int:
-    started_at = datetime.now().isoformat(timespec="seconds")
+    started_at = now_iso()
     with connect() as conn:
         cursor = conn.execute(
             """
@@ -58,7 +58,7 @@ def finish_run(
     alerts_fired: int = 0,
     error: str | None = None,
 ) -> None:
-    finished_at = datetime.now().isoformat(timespec="seconds")
+    finished_at = now_iso()
     with connect() as conn:
         conn.execute(
             """
