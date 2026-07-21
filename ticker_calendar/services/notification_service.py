@@ -5,9 +5,24 @@ from datetime import datetime
 
 import requests
 
-from ticker_calendar.config.server import NTFY_TOPIC, NTFY_URL
+from ticker_calendar.config.server import NTFY_TOPIC, NTFY_TOPIC_IS_DEFAULT, NTFY_URL
 
 logger = logging.getLogger(__name__)
+
+_warned_insecure_topic = False
+
+
+def _warn_insecure_topic_once(topic: str) -> None:
+    global _warned_insecure_topic
+    if _warned_insecure_topic:
+        return
+    _warned_insecure_topic = True
+    logger.warning(
+        "Using the built-in default ntfy topic %r. ntfy.sh topics are public: "
+        "anyone who knows this name can read your alerts and send spoofed "
+        "notifications. Set the NTFY_TOPIC env var to a private random value.",
+        topic,
+    )
 
 
 def send_ntfy(
@@ -19,6 +34,8 @@ def send_ntfy(
     priority: str = "high",
 ) -> bool:
     topic = topic or NTFY_TOPIC
+    if NTFY_TOPIC_IS_DEFAULT and topic == NTFY_TOPIC:
+        _warn_insecure_topic_once(topic)
     url = f"{NTFY_URL.rstrip('/')}/{topic}"
 
     headers = {
