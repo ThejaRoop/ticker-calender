@@ -68,11 +68,6 @@ def _next_week_range(from_date: date) -> tuple[date, date]:
     return next_monday, next_sunday
 
 
-def _prior_friday_for_next_week(from_date: date) -> date:
-    next_monday, _ = _next_week_range(from_date)
-    return next_monday - timedelta(days=3)
-
-
 def _should_fire(rule_id: str, ticker: str, alert_date: date) -> bool:
     return not alerts_db.was_fired(rule_id, ticker, alert_date)
 
@@ -98,14 +93,12 @@ def _maybe_add(
     if condition is not None:
         if quote is None or not condition(quote):
             return
-    if drop_pct is None and quote is not None:
-        drop_pct = _drop_pct(quote)
     results.append(
         AlertCandidate(
             rule_id=rule_id,
             rule_name=rule_name,
             ticker=ticker,
-            message=_decorate_message(message, drop_pct),
+            message=message,
             alert_date=alert_date,
             drop_pct=drop_pct,
         )
@@ -144,8 +137,6 @@ def evaluate_earnings_today(
 def evaluate_earnings_next_week(today: date) -> list[AlertCandidate]:
     rule = RULE_EARNINGS_NEXT_WEEK
     if today.weekday() != 4:
-        return []
-    if today != _prior_friday_for_next_week(today):
         return []
 
     next_monday, next_sunday = _next_week_range(today)
@@ -252,17 +243,14 @@ def evaluate_popular_friday(
 
 
 def _drop_pct(quote: Quote | None) -> float | None:
+    """Percent decline from the day's open. Only meaningful when the stock is
+    actually below its open, so non-positive values return None."""
     if quote is None:
         return None
     if quote.open_price in (None, 0) or quote.current_price is None:
         return None
-    return round(((quote.open_price - quote.current_price) / quote.open_price) * 100, 2)
-
-
-def _decorate_message(message: str, drop_pct: float | None) -> str:
-    if drop_pct is None:
-        return message
-    return f"{message} (drop {drop_pct:.2f}%)"
+    pct = round(((quote.open_price - quote.current_price) / quote.open_price) * 100, 2)
+    return pct if pct > 0 else None
 
 
 def evaluate_thursday_shakeout(
@@ -294,7 +282,6 @@ def evaluate_thursday_shakeout(
                 and quote.previous_close_price > 0
                 and (quote.previous_close_price - quote.current_price) / quote.previous_close_price > 0.015
             ),
-            drop_pct=_drop_pct(quote),
         )
     return results
 
@@ -362,7 +349,6 @@ def evaluate_gap_fill_trade(
                 and quote.open_price < quote.previous_close_price
                 and quote.current_price >= quote.opening_range_high
             ),
-            drop_pct=_drop_pct(quote),
         )
     return results
 
@@ -390,9 +376,6 @@ def evaluate_rule(rule_id: str, now: datetime | None = None) -> list[AlertCandid
 
     today = now.date()
     evaluator = _EVALUATORS[rule_id]
-
-    if rule_id in ("earnings_today", "earnings_tomorrow", "popular_weekday", "popular_friday"):
-        return evaluator(today)
     return evaluator(today)
 
 
