@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import sqlite3
 from collections.abc import Iterator
 from contextlib import contextmanager
