@@ -9,7 +9,9 @@ Type=simple
 User=roop
 Group=roop
 WorkingDirectory=/home/roop/Desktop/ticker-calender
-Environment=NTFY_TOPIC=test_myalerts
+# REQUIRED: set a private, random ntfy topic (e.g. `openssl rand -hex 16`).
+# ntfy.sh topics are public — a guessable name leaks alerts and allows spoofing.
+Environment=NTFY_TOPIC=CHANGE_ME_TO_A_RANDOM_PRIVATE_TOPIC
 Environment=TICKER_CALENDAR_LOG_DIR=/home/roop/Desktop/ticker-calender/logs
 ExecStart=/home/roop/Desktop/ticker-calender/.venv/bin/python run_server.py serve
 Restart=always

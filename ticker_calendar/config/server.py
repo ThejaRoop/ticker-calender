@@ -1,8 +1,13 @@
 import os
 from pathlib import Path
 
-# ntfy.sh push notification topic (override via env on Ubuntu server)
-NTFY_TOPIC = os.environ.get("NTFY_TOPIC", "test_myalerts")
+# ntfy.sh push notification topic (override via env on Ubuntu server).
+# ntfy.sh topics are public: anyone who knows the topic name can read your
+# alerts and publish spoofed notifications. Always set NTFY_TOPIC to a long,
+# random, private value in production (e.g. `openssl rand -hex 16`).
+_INSECURE_DEFAULT_TOPIC = "test_myalerts"
+NTFY_TOPIC = os.environ.get("NTFY_TOPIC", _INSECURE_DEFAULT_TOPIC)
+NTFY_TOPIC_IS_DEFAULT = "NTFY_TOPIC" not in os.environ
 NTFY_URL = os.environ.get("NTFY_URL", "https://ntfy.sh")
 
 # Server paths (Ubuntu)
