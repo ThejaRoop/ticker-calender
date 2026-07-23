@@ -8,7 +8,7 @@ cd "$PROJECT_DIR"
 echo "==> Ticker Calendar Ubuntu setup"
 echo "    Project: $PROJECT_DIR"
 
-# Pick the best available Python (3.10+ preferred, 3.8+ supported with pinned deps)
+# Pick the best available Python (3.10+ preferred, 3.8+ supported)
 PYTHON=""
 for candidate in python3.12 python3.11 python3.10 python3.9 python3.8 python3; do
   if command -v "$candidate" >/dev/null 2>&1; then
@@ -31,11 +31,11 @@ if ! "$PYTHON" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 8) 
   exit 1
 fi
 
-# System packages sometimes needed for lxml wheels on minimal Ubuntu
+# System packages for Python venv
 if command -v apt-get >/dev/null 2>&1; then
   echo "==> Installing system packages (safe to skip if already installed)..."
   sudo apt-get update -qq
-  sudo apt-get install -y -qq python3-venv python3-pip libxml2-dev libxslt1-dev zlib1g-dev || true
+  sudo apt-get install -y -qq python3-venv python3-pip || true
 fi
 
 echo "==> Creating virtual environment"

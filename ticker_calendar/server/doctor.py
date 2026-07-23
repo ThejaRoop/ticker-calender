@@ -11,25 +11,16 @@ def check_python() -> list[str]:
     major, minor = sys.version_info[:2]
     if (major, minor) < (3, 8):
         errors.append(f"Python 3.8+ required (found {major}.{minor})")
-    elif (major, minor) < (3, 10):
-        print(
-            f"WARNING: Python {major}.{minor} works with pinned yfinance 0.2.54. "
-            "Python 3.10+ is recommended for long-term support."
-        )
     return errors
 
 
 def check_imports() -> list[str]:
     errors: list[str] = []
     modules = [
-        "yfinance",
         "requests",
-        "pandas",
         "apscheduler",
         "filelock",
-        "lxml",
         "ticker_calendar.server.scheduler",
-        "ticker_calendar.services.market_service",
         "ticker_calendar.services.notification_service",
     ]
     for name in modules:
@@ -37,21 +28,6 @@ def check_imports() -> list[str]:
             importlib.import_module(name)
         except ImportError as exc:
             errors.append(f"Missing import {name}: {exc}")
-    return errors
-
-
-def check_yfinance_version() -> list[str]:
-    errors: list[str] = []
-    import yfinance
-
-    version = getattr(yfinance, "__version__", "unknown")
-    if version.startswith("1."):
-        errors.append(
-            f"yfinance {version} requires curl_cffi>=0.15 (Python 3.10+). "
-            "Pin yfinance==0.2.54 in requirements.txt."
-        )
-    else:
-        print(f"OK: yfinance {version}")
     return errors
 
 
@@ -79,7 +55,6 @@ def run_doctor() -> int:
     all_errors: list[str] = []
     all_errors.extend(check_python())
     all_errors.extend(check_imports())
-    all_errors.extend(check_yfinance_version())
     all_errors.extend(check_db_and_schedule())
 
     if all_errors:

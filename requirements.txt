@@ -1,10 +1,4 @@
-# Pin yfinance 0.2.x: yfinance 1.x requires curl_cffi>=0.15 which needs Python 3.10+.
-# 0.2.54 works on Python 3.8 Ubuntu and supports 1m OHLCV + earnings_dates.
-yfinance==0.2.54
 requests>=2.31.0,<3
-pandas>=2.0.0,<3
-numpy>=1.24.0,<3
 APScheduler>=3.10.0,<4
 filelock>=3.13.0,<4
-lxml>=4.9.0
 backports.zoneinfo>=0.2.1; python_version < "3.9"

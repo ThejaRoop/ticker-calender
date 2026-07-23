@@ -1,135 +1,69 @@
 ticker-calendar/
-├── main.py
-├── ALERT_RULES.md              # Human-readable rules (review at a glance)
-├── requirements.txt
+├── main.py                      # Desktop UI entry point
+├── run_server.py                # Server entry point (Ubuntu/systemd)
+├── plugin_earnings_dates.py       # Populate earnings dates (optional - for initial setup)
+├── check_tickers.py             # View all tickers in database
+├── requirements.txt             # Python dependencies
 └── ticker_calendar/
     ├── config/
-    │   ├── settings.py         # Calendar settings
-    │   ├── alert_rules.py      # Programmed rule constants
-    │   └── defaults.py         # Default popular ticker list
+    │   ├── settings.py          # Calendar settings
+    │   ├── alert_rules.py       # All alert rule definitions
+    │   ├── defaults.py          # Default popular ticker list
+    │   └── optional_tickers.py  # Additional tickers for earnings sync
     ├── db/
-    │   ├── tickers.py          # Earnings calendar CRUD
-    │   ├── popular_tickers.py  # Popular list CRUD
-    │   └── alerts.py           # Fired-alert deduplication log
+    │   ├── tickers.py           # Earnings calendar CRUD
+    │   ├── popular_tickers.py   # Popular list CRUD
+    │   └── alerts.py            # Fired-alert deduplication log
     ├── services/
-    │   ├── calendar_service.py # 90-day recurrence
-    │   ├── market_service.py   # Yahoo Finance prices (yfinance)
-    │   ├── popular_service.py  # Popular ticker management
-    │   ├── alert_service.py    # Desktop UI background monitor
+    │   ├── calendar_service.py    # 90-day recurrence
+    │   ├── popular_service.py     # Popular ticker management
+    │   ├── alert_service.py       # Desktop UI background monitor
     │   └── notification_service.py  # ntfy.sh push alerts
     ├── server/
-    │   ├── scheduler.py        # APScheduler — exact-time checks
-    │   ├── job_runner.py       # Run one rule + notify + log
-    │   ├── lock.py             # Prevents overlapping yfinance calls
-    │   └── heartbeat.py        # Alive signal for monitoring
+    │   ├── scheduler.py         # APScheduler — exact-time checks
+    │   ├── job_runner.py        # Run one rule + notify + log
+    │   ├── lock.py              # Prevents overlapping jobs
+    │   └── heartbeat.py         # Alive signal for monitoring
     ├── rules/
-    │   └── evaluator.py        # All 4 alert rules
+    │   └── evaluator.py         # All 14 alert rule evaluators
     └── ui/
-        ├── app.py              # Main window + menu
+        ├── app.py               # Main window + menu
         ├── calendar_view.py
         ├── ticker_dialog.py
         ├── popular_dialog.py
         └── alerts_panel.py
 
 
-Alert rules (programmed + documented)
-Rule	When	Time (ET)	Condition
-1. Earnings today
-Source earning date is today
-10:00–10:45
-Stock down from open
-2. Earnings next week
-Friday before next Mon–Sun week with earnings
-10:00–10:45
-No price check (setup alert)
-3. Popular weekday
-Mon / Tue / Wed
-10:30–10:35
-Popular stock down from open
-5. Popular Friday
-Normal Friday
-10:00–10:45
-Popular stock down from open
+Alert rules (database & time-only)
+=================================
+All alerts fire based on calendar events and lists stored in the local database matching the current time. No external price APIs are used.
 
-
-
-
-
-
-The rules are:
-
-Earnings today:
-
-If a stock has an earnings date today
-and the stock is down from its opening price
-and it is a weekday
-
-Earnings today:
-10:00, 10:15, 10:30, 10:45
-
-----------------
-Earnings next week:
-
-If it is Friday and the upcoming Monday-to-Sunday week has earnings dates
-this is mainly a setup alert for next week
-
-
-Earnings next week:
-10:00 on Friday
-----------------
-
-Popular weekday dip:
-
-If it is Monday, Tuesday, or Wednesday
-and one of the popular stocks is down from its opening price..
-Popular weekday dip:
-10:30 on Monday, Tuesday, or Wednesday
-
-----------------
-
-Popular Friday dip:
-
-If it is Friday
-and one of the popular stocks is down from its opening price
-
-
-Popular Friday dip:
-10:00, 10:15, 10:30, 10:45 on Friday
----------------------
-The app checks at these times in Eastern Time:
-
-An alert is triggered only if:
-the current time matches one of those check points,
-it is a trading day and the market is open between 9:30 AM and 4:00 PM ET,
-the stock condition is met.
-
----------------------
-
-
-
-
-
-
-
-
-
-
-
-C:\Users\nagis\ticker-calendar\plugin_earnings_dates.py
-
-run this script, to populate dates in to the calender for tickers
+Rule ID                  | When                              | Time (ET)
+------------------------|-----------------------------------|------------------
+earnings_today          | Today is an earnings date         | 10:00, 10:15, 10:30, 10:45
+earnings_next_week      | Friday + next week has earnings   | 10:00, 10:15, 10:30, 10:45
+earnings_tomorrow       | Tomorrow is an earnings date      | 14:00
+earnings_day_morning_matrix | Today is an earnings date      | 09:45, 10:00, 10:15, 10:30, 10:45, 11:00
+popular_weekday         | Monday, Tuesday, or Wednesday     | 10:30
+popular_friday          | Friday                            | 10:00, 10:15, 10:30, 10:45
+thursday_shakeout       | Thursday                          | 11:00
+eod_reversal            | Monday-Thursday                   | 15:30
+gap_fill_trade          | Daily                             | 10:00, 10:30
+iv_crush                | Monday-Friday                     | 09:45
+monday_gap_fill         | Monday                            | 10:15, 10:30, 10:45, 11:00, 11:15, 11:30
+tuesday_high_low        | Tuesday                           | 09:30, 09:45, 10:00, 10:15, 10:30
+wednesday_midweek       | Wednesday                         | 14:00, 14:15, 14:30, 14:45, 15:00, 15:30, 15:45, 16:00
+friday_gamma_squeeze    | Friday                            | 14:30, 14:45, 15:00, 15:15, 15:30, 15:45, 16:00, 16:10, 16:20, 16:30, 16:40, 16:50
 
 
 Ubuntu server deploy (fool-proof)
----------------------------------
+--------------------------------
 1. bash scripts/setup_ubuntu.sh
 2. python run_server.py doctor          # must pass before going live
 3. python run_server.py list            # confirm scheduled times
 4. python run_server.py run-rule popular_weekday   # smoke test
 5. python run_server.py serve           # or use systemd (deploy/ticker-calendar.service)
 
-If pip fails on curl_cffi: requirements.txt pins yfinance==0.2.54 (not 1.x).
-yfinance 1.x needs Python 3.10+ and curl_cffi>=0.15.
 Ubuntu setup
 
 cd ~/ticker-calendar
@@ -141,8 +75,9 @@ pip install -r requirements.txt
 export NTFY_TOPIC=test_myalerts
 
 # Test one rule manually
-python run_server.py run-rule earnings_today --time 10:00
-python run_server.py run-rule earnings_tomorrow --time 14:00
+python run_server.py run-rule earnings_today
+python run_server.py run-rule earnings_tomorrow
+python run_server.py run-rule popular_weekday
 
 # See all scheduled jobs
 python run_server.py list
@@ -160,6 +95,3 @@ tail -f logs/server.log   # job run details
 Run tests
 pip install -r requirements-dev.txt
 python -m pytest tests/ -v
-
-
-

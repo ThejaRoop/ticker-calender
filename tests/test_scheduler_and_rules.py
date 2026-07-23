@@ -10,13 +10,20 @@ import pytest
 
 from ticker_calendar.config.alert_rules import SCHEDULED_CHECKS
 from ticker_calendar.rules.evaluator import (
-    AlertCandidate,
+    evaluate_earnings_day_morning_matrix,
     evaluate_earnings_next_week,
+    evaluate_earnings_today,
     evaluate_earnings_tomorrow,
     evaluate_eod_reversal,
+    evaluate_friday_gamma_squeeze,
     evaluate_gap_fill_trade,
+    evaluate_iv_crush,
+    evaluate_monday_gap_fill,
+    evaluate_popular_friday,
     evaluate_popular_weekday,
     evaluate_thursday_shakeout,
+    evaluate_tuesday_high_low,
+    evaluate_wednesday_midweek,
     is_market_day,
     now_et,
 )
@@ -54,32 +61,12 @@ def test_is_market_day_before_open():
 
 
 @patch("ticker_calendar.rules.evaluator.get_symbols", return_value=["MSFT"])
-@patch("ticker_calendar.rules.evaluator.get_quotes")
 @patch("ticker_calendar.rules.evaluator.alerts_db.was_fired", return_value=False)
-def test_popular_weekday_fires_when_down(mock_fired, mock_quotes, _symbols):
-    from ticker_calendar.services.market_service import Quote
-
-    mock_quotes.return_value = {
-        "MSFT": Quote(ticker="MSFT", open_price=100.0, current_price=99.0),
-    }
+def test_popular_weekday_fires(mock_fired, _symbols):
     wednesday = date(2026, 7, 8)
     results = evaluate_popular_weekday(wednesday)
     assert len(results) == 1
     assert results[0].ticker == "MSFT"
-
-
-@patch("ticker_calendar.rules.evaluator.get_symbols", return_value=["MSFT"])
-@patch("ticker_calendar.rules.evaluator.get_quotes")
-@patch("ticker_calendar.rules.evaluator.alerts_db.was_fired", return_value=False)
-def test_popular_weekday_skips_when_up(mock_fired, mock_quotes, _symbols):
-    from ticker_calendar.services.market_service import Quote
-
-    mock_quotes.return_value = {
-        "MSFT": Quote(ticker="MSFT", open_price=100.0, current_price=101.0),
-    }
-    wednesday = date(2026, 7, 8)
-    results = evaluate_popular_weekday(wednesday)
-    assert results == []
 
 
 @patch("ticker_calendar.rules.evaluator.tickers_db.get_source_earnings_between")
@@ -94,66 +81,113 @@ def test_earnings_next_week_prior_friday(mock_fired, mock_between):
 
 
 @patch("ticker_calendar.rules.evaluator.tickers_db.get_source_earnings_on")
-@patch("ticker_calendar.rules.evaluator.get_quotes")
 @patch("ticker_calendar.rules.evaluator.alerts_db.was_fired", return_value=False)
-def test_earnings_tomorrow_dip_fires_when_down(mock_fired, mock_quotes, mock_earnings_on):
-    from ticker_calendar.services.market_service import Quote
-
+def test_earnings_tomorrow_fires(mock_fired, mock_earnings_on):
     mock_earnings_on.return_value = ["AAPL"]
-    mock_quotes.return_value = {
-        "AAPL": Quote(ticker="AAPL", open_price=100.0, current_price=99.0),
-    }
     today = date(2026, 7, 8)
     results = evaluate_earnings_tomorrow(today)
     assert len(results) == 1
     assert results[0].ticker == "AAPL"
 
 
-@patch("ticker_calendar.rules.evaluator.get_quotes")
+@patch("ticker_calendar.rules.evaluator.tickers_db.get_source_earnings_on")
 @patch("ticker_calendar.rules.evaluator.alerts_db.was_fired", return_value=False)
-def test_thursday_shakeout_fires_for_large_drop(mock_fired, mock_quotes):
-    from ticker_calendar.services.market_service import Quote
+def test_earnings_today_fires(mock_fired, mock_earnings_on):
+    mock_earnings_on.return_value = ["AAPL"]
+    today = date(2026, 7, 8)
+    results = evaluate_earnings_today(today)
+    assert len(results) == 1
+    assert results[0].ticker == "AAPL"
 
-    mock_quotes.return_value = {
-        "MSFT": Quote(ticker="MSFT", open_price=100.0, current_price=96.0, previous_close_price=100.0),
-    }
+
+@patch("ticker_calendar.rules.evaluator.tickers_db.get_source_earnings_on")
+@patch("ticker_calendar.rules.evaluator.alerts_db.was_fired", return_value=False)
+def test_earnings_day_morning_matrix_fires(mock_fired, mock_earnings_on):
+    mock_earnings_on.return_value = ["AAPL"]
+    today = date(2026, 7, 8)
+    results = evaluate_earnings_day_morning_matrix(today)
+    assert len(results) == 1
+    assert results[0].ticker == "AAPL"
+
+
+@patch("ticker_calendar.rules.evaluator.get_symbols", return_value=["MSFT"])
+@patch("ticker_calendar.rules.evaluator.alerts_db.was_fired", return_value=False)
+def test_thursday_shakeout_fires(mock_fired, _symbols):
     thursday = date(2026, 7, 9)
     results = evaluate_thursday_shakeout(thursday)
     assert len(results) == 1
     assert results[0].ticker == "MSFT"
 
 
-@patch("ticker_calendar.rules.evaluator.get_quotes")
+@patch("ticker_calendar.rules.evaluator.get_symbols", return_value=["NVDA"])
 @patch("ticker_calendar.rules.evaluator.alerts_db.was_fired", return_value=False)
-def test_eod_reversal_fires_when_down_but_above_low(mock_fired, mock_quotes):
-    from ticker_calendar.services.market_service import Quote
-
-    mock_quotes.return_value = {
-        "NVDA": Quote(ticker="NVDA", open_price=100.0, current_price=99.0, day_low_price=98.0),
-    }
+def test_eod_reversal_fires(mock_fired, _symbols):
     monday = date(2026, 7, 6)
     results = evaluate_eod_reversal(monday)
     assert len(results) == 1
     assert results[0].ticker == "NVDA"
 
 
-@patch("ticker_calendar.rules.evaluator.get_quotes")
+@patch("ticker_calendar.rules.evaluator.get_symbols", return_value=["AMD"])
 @patch("ticker_calendar.rules.evaluator.alerts_db.was_fired", return_value=False)
-def test_gap_fill_trade_fires_when_gap_down_rebounds(mock_fired, mock_quotes):
-    from ticker_calendar.services.market_service import Quote
-
-    mock_quotes.return_value = {
-        "AMD": Quote(
-            ticker="AMD",
-            open_price=99.0,
-            current_price=101.0,
-            previous_close_price=100.0,
-            opening_range_high=100.5,
-        ),
-    }
+def test_gap_fill_trade_fires(mock_fired, _symbols):
     results = evaluate_gap_fill_trade(date(2026, 7, 8))
     assert len(results) == 1
     assert results[0].ticker == "AMD"
+
+
+@patch("ticker_calendar.rules.evaluator.get_symbols", return_value=["AAPL"])
+@patch("ticker_calendar.rules.evaluator.alerts_db.was_fired", return_value=False)
+def test_iv_crush_fires(mock_fired, _symbols):
+    monday = date(2026, 7, 6)
+    results = evaluate_iv_crush(monday)
+    assert len(results) == 1
+    assert results[0].ticker == "AAPL"
+
+
+@patch("ticker_calendar.rules.evaluator.get_symbols", return_value=["MSFT"])
+@patch("ticker_calendar.rules.evaluator.alerts_db.was_fired", return_value=False)
+def test_monday_gap_fill_fires(mock_fired, _symbols):
+    monday = date(2026, 7, 6)
+    results = evaluate_monday_gap_fill(monday)
+    assert len(results) == 1
+    assert results[0].ticker == "MSFT"
+
+
+@patch("ticker_calendar.rules.evaluator.get_symbols", return_value=["NVDA"])
+@patch("ticker_calendar.rules.evaluator.alerts_db.was_fired", return_value=False)
+def test_tuesday_high_low_fires(mock_fired, _symbols):
+    tuesday = date(2026, 7, 7)
+    results = evaluate_tuesday_high_low(tuesday)
+    assert len(results) == 1
+    assert results[0].ticker == "NVDA"
+
+
+@patch("ticker_calendar.rules.evaluator.get_symbols", return_value=["AMD"])
+@patch("ticker_calendar.rules.evaluator.alerts_db.was_fired", return_value=False)
+def test_wednesday_midweek_fires(mock_fired, _symbols):
+    wednesday = date(2026, 7, 8)
+    results = evaluate_wednesday_midweek(wednesday)
+    assert len(results) == 1
+    assert results[0].ticker == "AMD"
+
+
+@patch("ticker_calendar.rules.evaluator.get_symbols", return_value=["AAPL"])
+@patch("ticker_calendar.rules.evaluator.alerts_db.was_fired", return_value=False)
+def test_friday_gamma_squeeze_fires(mock_fired, _symbols):
+    friday = date(2026, 7, 10)
+    results = evaluate_friday_gamma_squeeze(friday)
+    assert len(results) == 1
+    assert results[0].ticker == "AAPL"
+
+
+@patch("ticker_calendar.rules.evaluator.get_symbols", return_value=["MSFT"])
+@patch("ticker_calendar.rules.evaluator.alerts_db.was_fired", return_value=False)
+def test_popular_friday_fires(mock_fired, _symbols):
+    friday = date(2026, 7, 10)
+    results = evaluate_popular_friday(friday)
+    assert len(results) == 1
+    assert results[0].ticker == "MSFT"
 
 
 def test_now_et_has_timezone():
