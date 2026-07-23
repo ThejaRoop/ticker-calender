@@ -1,2 +1,6 @@
 2026-07-09 22:49:03,903 [INFO] ticker_calendar.server.job_runner: Starting scheduled check rule=popular_weekday time=10:30 run_id=1
 2026-07-09 22:49:03,918 [INFO] ticker_calendar.server.job_runner: Finished scheduled check rule=popular_weekday time=10:30 alerts_fired=0
+2026-07-23 00:12:39,645 [INFO] ticker_calendar.server.job_runner: Starting scheduled check rule=popular_weekday time=10:00 run_id=2
+2026-07-23 00:12:39,661 [INFO] ticker_calendar.server.job_runner: Finished scheduled check rule=popular_weekday time=10:00 alerts_fired=0
+2026-07-23 00:12:59,103 [INFO] ticker_calendar.server.job_runner: Starting scheduled check rule=thursday_shakeout time=11:00 run_id=3
+2026-07-23 00:12:59,119 [INFO] ticker_calendar.server.job_runner: Finished scheduled check rule=thursday_shakeout time=11:00 alerts_fired=0
