@@ -31,72 +31,33 @@ RULE_EARNINGS_DAY_MORNING_MATRIX = {
     "requires_down": False,
 }
 
-RULE_POPULAR_WEEKDAY = {
-    "id": "popular_weekday",
-    "name": "Popular Stocks Weekday Dip",
-    "weekdays": {0, 1, 2},  # Mon, Tue, Wed
+RULE_POST_EARNINGS_MOMENTUM = {
+    "id": "post_earnings_momentum",
+    "name": "Post-Earnings Momentum Window (Day +1)",
+    "requires_down": False,
+}
+
+RULE_MIDWEEK_EARNINGS_SETUP = {
+    "id": "midweek_earnings_setup",
+    "name": "Mid-Week Earnings Lookahead (Wednesday Setup)",
     "requires_down": False,
 }
 
 RULE_POPULAR_FRIDAY = {
     "id": "popular_friday",
-    "name": "Popular Stocks Friday Dip",
-    "weekdays": {4},  # Friday
+    "name": "Popular Stocks Friday Watch",
     "requires_down": False,
 }
 
-RULE_THURSDAY_SHAKEOUT = {
-    "id": "thursday_shakeout",
-    "name": "Thursday Shakeout",
-    "weekdays": {3},  # Thursday
+RULE_MONTHLY_OPEX_FRIDAY = {
+    "id": "monthly_opex_friday",
+    "name": "Monthly Options Expiration (OPEX) Friday Watch",
     "requires_down": False,
 }
 
-RULE_EOD_REVERSAL = {
-    "id": "eod_reversal",
-    "name": "End of Day Reversal",
-    "weekdays": {0, 1, 2, 3},  # Mon-Thu
-    "requires_down": False,
-}
-
-RULE_GAP_FILL_TRADE = {
-    "id": "gap_fill_trade",
-    "name": "Gap Fill Momentum",
-    "requires_down": False,
-}
-
-RULE_IV_CRUSH = {
-    "id": "iv_crush",
-    "name": "IV Crush Window",
-    "weekdays": {0, 1, 2, 3, 4},  # Mon-Fri
-    "requires_down": False,
-}
-
-RULE_MONDAY_GAP_FILL = {
-    "id": "monday_gap_fill",
-    "name": "Monday Gap Fill",
-    "weekdays": {0},  # Monday
-    "requires_down": False,
-}
-
-RULE_TUESDAY_HIGH_LOW = {
-    "id": "tuesday_high_low",
-    "name": "Tuesday High/Low Window",
-    "weekdays": {1},  # Tuesday
-    "requires_down": False,
-}
-
-RULE_WEDNESDAY_MIDWEEK = {
-    "id": "wednesday_midweek",
-    "name": "Wednesday Mid-Week Reversal",
-    "weekdays": {2},  # Wednesday
-    "requires_down": False,
-}
-
-RULE_FRIDAY_GAMMA_SQUEEZE = {
-    "id": "friday_gamma_squeeze",
-    "name": "Friday Gamma Squeeze",
-    "weekdays": {4},  # Friday
+RULE_QUARTER_END_REBALANCE = {
+    "id": "quarter_end_rebalance",
+    "name": "Month-End Institutional Flow Setup",
     "requires_down": False,
 }
 
@@ -105,30 +66,30 @@ RULES_BY_ID = {
     RULE_EARNINGS_NEXT_WEEK["id"]: RULE_EARNINGS_NEXT_WEEK,
     RULE_EARNINGS_TOMORROW["id"]: RULE_EARNINGS_TOMORROW,
     RULE_EARNINGS_DAY_MORNING_MATRIX["id"]: RULE_EARNINGS_DAY_MORNING_MATRIX,
-    RULE_POPULAR_WEEKDAY["id"]: RULE_POPULAR_WEEKDAY,
+    RULE_POST_EARNINGS_MOMENTUM["id"]: RULE_POST_EARNINGS_MOMENTUM,
+    RULE_MIDWEEK_EARNINGS_SETUP["id"]: RULE_MIDWEEK_EARNINGS_SETUP,
     RULE_POPULAR_FRIDAY["id"]: RULE_POPULAR_FRIDAY,
-    RULE_THURSDAY_SHAKEOUT["id"]: RULE_THURSDAY_SHAKEOUT,
-    RULE_EOD_REVERSAL["id"]: RULE_EOD_REVERSAL,
-    RULE_GAP_FILL_TRADE["id"]: RULE_GAP_FILL_TRADE,
-    RULE_IV_CRUSH["id"]: RULE_IV_CRUSH,
-    RULE_MONDAY_GAP_FILL["id"]: RULE_MONDAY_GAP_FILL,
-    RULE_TUESDAY_HIGH_LOW["id"]: RULE_TUESDAY_HIGH_LOW,
-    RULE_WEDNESDAY_MIDWEEK["id"]: RULE_WEDNESDAY_MIDWEEK,
-    RULE_FRIDAY_GAMMA_SQUEEZE["id"]: RULE_FRIDAY_GAMMA_SQUEEZE,
+    RULE_MONTHLY_OPEX_FRIDAY["id"]: RULE_MONTHLY_OPEX_FRIDAY,
+    RULE_QUARTER_END_REBALANCE["id"]: RULE_QUARTER_END_REBALANCE,
 }
 
 ALERT_MESSAGE = "There is a chance to buy call for {ticker}"
 ALERT_MESSAGE_NEXT_WEEK = "There is a chance to buy call for {ticker} (earnings next week)"
 ALERT_MESSAGE_TOMORROW = "There is a chance to buy call for {ticker} (earnings tomorrow)"
-ALERT_MESSAGE_THURSDAY_SHAKEOUT = "Thursday liquidity setup on {ticker}"
-ALERT_MESSAGE_EOD_REVERSAL = "Closing schedule check for {ticker}"
-ALERT_MESSAGE_GAP_FILL = "Morning momentum setup initiating for {ticker}"
-ALERT_MESSAGE_IV_CRUSH = "9:45 AM IV Crush window open for {ticker}"
-ALERT_MESSAGE_MONDAY_GAP_FILL = "Monday Gap Fill window active for {ticker}"
-ALERT_MESSAGE_TUESDAY_HIGH_LOW = "Tuesday High/Low window active for {ticker}"
-ALERT_MESSAGE_WEDNESDAY_MIDWEEK = "Wednesday Mid-Week Reversal window for {ticker}"
-ALERT_MESSAGE_FRIDAY_GAMMA_SQUEEZE = "Friday Gamma Squeeze window active for {ticker}"
 ALERT_MESSAGE_EARNINGS_MATRIX = "Earnings buy window open for {ticker}"
+ALERT_MESSAGE_POST_EARNINGS_MOMENTUM = "Post-earnings volatility window active for {ticker}"
+ALERT_MESSAGE_MIDWEEK_EARNINGS_SETUP = "Mid-week pre-earnings setup for {ticker} (reporting soon)"
+ALERT_MESSAGE_MONTHLY_OPEX_FRIDAY = "Monthly OPEX volatility window open for {ticker}"
+ALERT_MESSAGE_QUARTER_END_REBALANCE = "Month-end rebalancing flow window active for {ticker}"
+
+# Curated watchlist for popular_friday rule
+POPULAR_FRIDAY_WATCHLIST = ["MSFT", "GOOGL", "NVDA", "SPY"]
+
+# Core high-liquidity tickers for OPEX rule
+OPEX_CORE_TICKERS = ["SPY", "QQQ", "AAPL", "MSFT", "NVDA", "TSLA", "AMZN", "GOOGL", "META"]
+
+# Index proxies and major large-cap for quarter-end rule
+QUARTER_END_TICKERS = ["SPY", "MSFT", "NVDA"]
 
 # Exact scheduled fire times (ET). Scheduler runs each job at these times only.
 SCHEDULED_CHECKS = [
@@ -153,9 +114,14 @@ SCHEDULED_CHECKS = [
         "weekdays": "mon,tue,wed,thu,fri",
     },
     {
-        "rule_id": "popular_weekday",
-        "times": ["10:30"],
-        "weekdays": "mon,tue,wed",
+        "rule_id": "post_earnings_momentum",
+        "times": ["09:45", "10:00", "10:15", "10:30"],
+        "weekdays": "mon,tue,wed,thu,fri",
+    },
+    {
+        "rule_id": "midweek_earnings_setup",
+        "times": ["13:00", "13:15", "13:30", "13:45", "14:00"],
+        "weekdays": "wed",
     },
     {
         "rule_id": "popular_friday",
@@ -163,44 +129,14 @@ SCHEDULED_CHECKS = [
         "weekdays": "fri",
     },
     {
-        "rule_id": "thursday_shakeout",
-        "times": ["11:00"],
-        "weekdays": "thu",
-    },
-    {
-        "rule_id": "eod_reversal",
-        "times": ["15:30"],
-        "weekdays": "mon,tue,wed,thu",
-    },
-    {
-        "rule_id": "gap_fill_trade",
-        "times": ["10:00", "10:30"],
-        "weekdays": "mon,tue,wed,thu,fri",
-    },
-    {
-        "rule_id": "iv_crush",
-        "times": ["09:45"],
-        "weekdays": "mon,tue,wed,thu,fri",
-    },
-    {
-        "rule_id": "monday_gap_fill",
-        "times": ["10:15", "10:30", "10:45", "11:00", "11:15", "11:30"],
-        "weekdays": "mon",
-    },
-    {
-        "rule_id": "tuesday_high_low",
-        "times": ["09:30", "09:45", "10:00", "10:15", "10:30"],
-        "weekdays": "tue",
-    },
-    {
-        "rule_id": "wednesday_midweek",
-        "times": ["14:00", "14:15", "14:30", "14:45", "15:00", "15:30", "15:45", "16:00"],
-        "weekdays": "wed",
-    },
-    {
-        "rule_id": "friday_gamma_squeeze",
-        "times": ["14:30", "14:45", "15:00", "15:15", "15:30", "15:45", "16:00", "16:10", "16:20", "16:30", "16:40", "16:50"],
+        "rule_id": "monthly_opex_friday",
+        "times": ["10:30", "10:45", "11:00", "11:15", "11:30"],
         "weekdays": "fri",
+    },
+    {
+        "rule_id": "quarter_end_rebalance",
+        "times": ["15:00", "15:15", "15:30", "15:45"],
+        "weekdays": "mon,tue,wed,thu,fri",
     },
 ]
 

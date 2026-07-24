@@ -10,39 +10,32 @@ except ImportError:  # pragma: no cover - Python 3.8 fallback
 
 from ticker_calendar.config.alert_rules import (
     ALERT_MESSAGE,
-    ALERT_MESSAGE_EOD_REVERSAL,
     ALERT_MESSAGE_EARNINGS_MATRIX,
-    ALERT_MESSAGE_FRIDAY_GAMMA_SQUEEZE,
-    ALERT_MESSAGE_GAP_FILL,
-    ALERT_MESSAGE_IV_CRUSH,
-    ALERT_MESSAGE_MONDAY_GAP_FILL,
+    ALERT_MESSAGE_MIDWEEK_EARNINGS_SETUP,
+    ALERT_MESSAGE_MONTHLY_OPEX_FRIDAY,
+    ALERT_MESSAGE_POST_EARNINGS_MOMENTUM,
+    ALERT_MESSAGE_QUARTER_END_REBALANCE,
     ALERT_MESSAGE_NEXT_WEEK,
-    ALERT_MESSAGE_THURSDAY_SHAKEOUT,
     ALERT_MESSAGE_TOMORROW,
-    ALERT_MESSAGE_TUESDAY_HIGH_LOW,
-    ALERT_MESSAGE_WEDNESDAY_MIDWEEK,
     MARKET_CLOSE,
     MARKET_OPEN,
     MARKET_TIMEZONE,
+    OPEX_CORE_TICKERS,
+    POPULAR_FRIDAY_WATCHLIST,
+    QUARTER_END_TICKERS,
     RULE_EARNINGS_DAY_MORNING_MATRIX,
     RULE_EARNINGS_NEXT_WEEK,
     RULE_EARNINGS_TODAY,
     RULE_EARNINGS_TOMORROW,
-    RULE_EOD_REVERSAL,
-    RULE_GAP_FILL_TRADE,
-    RULE_IV_CRUSH,
-    RULE_MONDAY_GAP_FILL,
+    RULE_POST_EARNINGS_MOMENTUM,
+    RULE_MIDWEEK_EARNINGS_SETUP,
     RULE_POPULAR_FRIDAY,
-    RULE_POPULAR_WEEKDAY,
-    RULE_THURSDAY_SHAKEOUT,
-    RULE_TUESDAY_HIGH_LOW,
-    RULE_WEDNESDAY_MIDWEEK,
-    RULE_FRIDAY_GAMMA_SQUEEZE,
+    RULE_MONTHLY_OPEX_FRIDAY,
+    RULE_QUARTER_END_REBALANCE,
     RULES_BY_ID,
 )
 from ticker_calendar.db import alerts as alerts_db
 from ticker_calendar.db import tickers as tickers_db
-from ticker_calendar.services.popular_service import get_symbols
 
 
 @dataclass
@@ -81,6 +74,41 @@ def _next_week_range(from_date: date) -> tuple[date, date]:
 def _prior_friday_for_next_week(from_date: date) -> date:
     next_monday, _ = _next_week_range(from_date)
     return next_monday - timedelta(days=3)
+
+
+def _is_third_friday(from_date: date) -> bool:
+    """Check if the given date is the third Friday of the month."""
+    if from_date.weekday() != 4:  # Friday
+        return False
+    # Find the first Friday of the month
+    first_friday = 1
+    while True:
+        try:
+            first_friday_date = date(from_date.year, from_date.month, first_friday)
+            if first_friday_date.weekday() == 4:
+                break
+            first_friday += 1
+        except ValueError:
+            return False
+    # Third Friday is 14 days after first Friday
+    third_friday = first_friday_date + timedelta(days=14)
+    return from_date == third_friday
+
+
+def _is_last_trading_day_of_month(from_date: date) -> bool:
+    """Check if the given date is the last trading day of the month."""
+    # Get the last day of the month
+    if from_date.month == 12:
+        next_month = date(from_date.year + 1, 1, 1)
+    else:
+        next_month = date(from_date.year, from_date.month + 1, 1)
+    last_day = next_month - timedelta(days=1)
+    
+    # If last day is weekend, use the Friday before
+    while last_day.weekday() >= 5:  # Saturday or Sunday
+        last_day = last_day - timedelta(days=1)
+    
+    return from_date == last_day
 
 
 def _should_fire(rule_id: str, ticker: str, alert_date: date) -> bool:
@@ -187,33 +215,61 @@ def evaluate_earnings_day_morning_matrix(today: date) -> list[AlertCandidate]:
     return results
 
 
-def evaluate_popular_weekday(today: date) -> list[AlertCandidate]:
-    rule = RULE_POPULAR_WEEKDAY
-    if today.weekday() not in rule["weekdays"]:
+def evaluate_post_earnings_momentum(today: date) -> list[AlertCandidate]:
+    """Rule 6: Post-Earnings Momentum Window (Day +1)"""
+    rule = RULE_POST_EARNINGS_MOMENTUM
+    # Check if yesterday was an earnings date
+    yesterday = today - timedelta(days=1)
+    tickers = tickers_db.get_source_earnings_on(yesterday)
+    if not tickers:
         return []
 
-    symbols = get_symbols()
     results: list[AlertCandidate] = []
-    for ticker in symbols:
+    for ticker in tickers:
         _maybe_add(
             results,
             rule["id"],
             rule["name"],
             ticker,
-            ALERT_MESSAGE.format(ticker=ticker),
+            ALERT_MESSAGE_POST_EARNINGS_MOMENTUM.format(ticker=ticker),
             today,
         )
+    return results
+
+
+def evaluate_midweek_earnings_setup(today: date) -> list[AlertCandidate]:
+    """Rule 7: Mid-Week Earnings Lookahead (Wednesday Setup)"""
+    rule = RULE_MIDWEEK_EARNINGS_SETUP
+    if today.weekday() != 2:  # Wednesday
+        return []
+
+    # Check for earnings on Thursday or Friday of the same week
+    thursday = today + timedelta(days=1)
+    friday = today + timedelta(days=2)
+    
+    results: list[AlertCandidate] = []
+    for day in [thursday, friday]:
+        tickers = tickers_db.get_source_earnings_on(day)
+        for ticker in tickers:
+            _maybe_add(
+                results,
+                rule["id"],
+                rule["name"],
+                ticker,
+                ALERT_MESSAGE_MIDWEEK_EARNINGS_SETUP.format(ticker=ticker),
+                today,
+            )
     return results
 
 
 def evaluate_popular_friday(today: date) -> list[AlertCandidate]:
+    """Rule 5: Popular Stocks Friday Watch - uses curated watchlist"""
     rule = RULE_POPULAR_FRIDAY
-    if today.weekday() not in rule["weekdays"]:
+    if today.weekday() != 4:  # Friday
         return []
 
-    symbols = get_symbols()
     results: list[AlertCandidate] = []
-    for ticker in symbols:
+    for ticker in POPULAR_FRIDAY_WATCHLIST:
         _maybe_add(
             results,
             rule["id"],
@@ -225,151 +281,41 @@ def evaluate_popular_friday(today: date) -> list[AlertCandidate]:
     return results
 
 
-def evaluate_thursday_shakeout(today: date) -> list[AlertCandidate]:
-    rule = RULE_THURSDAY_SHAKEOUT
-    if today.weekday() not in rule["weekdays"]:
+def evaluate_monthly_opex_friday(today: date) -> list[AlertCandidate]:
+    """Rule 8: Monthly Options Expiration (OPEX) Friday Watch"""
+    rule = RULE_MONTHLY_OPEX_FRIDAY
+    if today.weekday() != 4:  # Friday
+        return []
+    if not _is_third_friday(today):
         return []
 
-    symbols = get_symbols()
     results: list[AlertCandidate] = []
-    for ticker in symbols:
+    for ticker in OPEX_CORE_TICKERS:
         _maybe_add(
             results,
             rule["id"],
             rule["name"],
             ticker,
-            ALERT_MESSAGE_THURSDAY_SHAKEOUT.format(ticker=ticker),
+            ALERT_MESSAGE_MONTHLY_OPEX_FRIDAY.format(ticker=ticker),
             today,
         )
     return results
 
 
-def evaluate_eod_reversal(today: date) -> list[AlertCandidate]:
-    rule = RULE_EOD_REVERSAL
-    if today.weekday() not in rule["weekdays"]:
+def evaluate_quarter_end_rebalance(today: date) -> list[AlertCandidate]:
+    """Rule 9: Month-End Institutional Flow Setup"""
+    rule = RULE_QUARTER_END_REBALANCE
+    if not _is_last_trading_day_of_month(today):
         return []
 
-    symbols = get_symbols()
     results: list[AlertCandidate] = []
-    for ticker in symbols:
+    for ticker in QUARTER_END_TICKERS:
         _maybe_add(
             results,
             rule["id"],
             rule["name"],
             ticker,
-            ALERT_MESSAGE_EOD_REVERSAL.format(ticker=ticker),
-            today,
-        )
-    return results
-
-
-def evaluate_gap_fill_trade(today: date) -> list[AlertCandidate]:
-    rule = RULE_GAP_FILL_TRADE
-
-    symbols = get_symbols()
-    results: list[AlertCandidate] = []
-    for ticker in symbols:
-        _maybe_add(
-            results,
-            rule["id"],
-            rule["name"],
-            ticker,
-            ALERT_MESSAGE_GAP_FILL.format(ticker=ticker),
-            today,
-        )
-    return results
-
-
-def evaluate_iv_crush(today: date) -> list[AlertCandidate]:
-    rule = RULE_IV_CRUSH
-    if today.weekday() not in rule["weekdays"]:
-        return []
-
-    symbols = get_symbols()
-    results: list[AlertCandidate] = []
-    for ticker in symbols:
-        _maybe_add(
-            results,
-            rule["id"],
-            rule["name"],
-            ticker,
-            ALERT_MESSAGE_IV_CRUSH.format(ticker=ticker),
-            today,
-        )
-    return results
-
-
-def evaluate_monday_gap_fill(today: date) -> list[AlertCandidate]:
-    rule = RULE_MONDAY_GAP_FILL
-    if today.weekday() not in rule["weekdays"]:
-        return []
-
-    symbols = get_symbols()
-    results: list[AlertCandidate] = []
-    for ticker in symbols:
-        _maybe_add(
-            results,
-            rule["id"],
-            rule["name"],
-            ticker,
-            ALERT_MESSAGE_MONDAY_GAP_FILL.format(ticker=ticker),
-            today,
-        )
-    return results
-
-
-def evaluate_tuesday_high_low(today: date) -> list[AlertCandidate]:
-    rule = RULE_TUESDAY_HIGH_LOW
-    if today.weekday() not in rule["weekdays"]:
-        return []
-
-    symbols = get_symbols()
-    results: list[AlertCandidate] = []
-    for ticker in symbols:
-        _maybe_add(
-            results,
-            rule["id"],
-            rule["name"],
-            ticker,
-            ALERT_MESSAGE_TUESDAY_HIGH_LOW.format(ticker=ticker),
-            today,
-        )
-    return results
-
-
-def evaluate_wednesday_midweek(today: date) -> list[AlertCandidate]:
-    rule = RULE_WEDNESDAY_MIDWEEK
-    if today.weekday() not in rule["weekdays"]:
-        return []
-
-    symbols = get_symbols()
-    results: list[AlertCandidate] = []
-    for ticker in symbols:
-        _maybe_add(
-            results,
-            rule["id"],
-            rule["name"],
-            ticker,
-            ALERT_MESSAGE_WEDNESDAY_MIDWEEK.format(ticker=ticker),
-            today,
-        )
-    return results
-
-
-def evaluate_friday_gamma_squeeze(today: date) -> list[AlertCandidate]:
-    rule = RULE_FRIDAY_GAMMA_SQUEEZE
-    if today.weekday() not in rule["weekdays"]:
-        return []
-
-    symbols = get_symbols()
-    results: list[AlertCandidate] = []
-    for ticker in symbols:
-        _maybe_add(
-            results,
-            rule["id"],
-            rule["name"],
-            ticker,
-            ALERT_MESSAGE_FRIDAY_GAMMA_SQUEEZE.format(ticker=ticker),
+            ALERT_MESSAGE_QUARTER_END_REBALANCE.format(ticker=ticker),
             today,
         )
     return results
@@ -380,16 +326,11 @@ _EVALUATORS = {
     "earnings_next_week": evaluate_earnings_next_week,
     "earnings_tomorrow": evaluate_earnings_tomorrow,
     "earnings_day_morning_matrix": evaluate_earnings_day_morning_matrix,
-    "popular_weekday": evaluate_popular_weekday,
+    "post_earnings_momentum": evaluate_post_earnings_momentum,
+    "midweek_earnings_setup": evaluate_midweek_earnings_setup,
     "popular_friday": evaluate_popular_friday,
-    "thursday_shakeout": evaluate_thursday_shakeout,
-    "eod_reversal": evaluate_eod_reversal,
-    "gap_fill_trade": evaluate_gap_fill_trade,
-    "iv_crush": evaluate_iv_crush,
-    "monday_gap_fill": evaluate_monday_gap_fill,
-    "tuesday_high_low": evaluate_tuesday_high_low,
-    "wednesday_midweek": evaluate_wednesday_midweek,
-    "friday_gamma_squeeze": evaluate_friday_gamma_squeeze,
+    "monthly_opex_friday": evaluate_monthly_opex_friday,
+    "quarter_end_rebalance": evaluate_quarter_end_rebalance,
 }
 
 

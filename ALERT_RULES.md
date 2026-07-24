@@ -7,183 +7,101 @@ Human-readable reference for all automated buy-call alerts. Program constants li
 
 ---
 
-## Earnings-Based Rules
+## Section 1: Earnings-Based Rules
 
 ### Rule 1 — Earnings Today
-
-| Field | Value |
-|-------|-------|
-| **ID** | `earnings_today` |
-| **When** | Today is a scheduled **earning date** for a ticker in the local database |
-| **Time window** | 10:00 AM – 10:45 AM ET |
-| **Alert** | "There is a chance to buy call for {TICKER}" |
-
-Only applies to source earning dates (not auto-generated 90-day recurrence entries).
-
----
+| Field | Specification |
+|-------|---------------|
+| **Rule ID** | `earnings_today` |
+| **Trigger Condition** | The current calendar date matches a scheduled earnings date for a ticker in the local database |
+| **Time Window** | 10:00 AM – 10:45 AM ET |
+| **Target Scope** | All valid database tickers meeting the calendar condition |
+| **Alert Payload** | "There is a chance to buy call for {TICKER}" |
 
 ### Rule 2 — Earnings Next Week (Prior Friday Setup)
-
-| Field | Value |
-|-------|-------|
-| **ID** | `earnings_next_week` |
-| **When** | Today is **Friday** and a ticker has an earning date in **next calendar week** (Mon–Sun) per local DB |
-| **Time window** | 10:00 AM – 10:45 AM ET |
-| **Alert** | "There is a chance to buy call for {TICKER} (earnings next week)" |
-
-"Next week" = the Monday–Sunday period starting the Monday after this Friday.
-
----
+| Field | Specification |
+|-------|---------------|
+| **Rule ID** | `earnings_next_week` |
+| **Trigger Condition** | Today is Friday, and a ticker has a recorded earnings date falling within the next calendar week (Monday–Sunday) per the local database |
+| **Time Window** | 10:00 AM – 10:45 AM ET |
+| **Target Scope** | All valid database tickers meeting the calendar condition |
+| **Alert Payload** | "There is a chance to buy call for {TICKER} (earnings next week)" |
+| **Definition Note** | "Next week" strictly designates the Monday through Sunday period immediately following the current Friday. |
 
 ### Rule 3 — Earnings Tomorrow
-
-| Field | Value |
-|-------|-------|
-| **ID** | `earnings_tomorrow` |
-| **When** | A ticker has an earning date **tomorrow** per local DB |
-| **Time window** | 2:00 PM ET |
-| **Alert** | "There is a chance to buy call for {TICKER} (earnings tomorrow)" |
-
----
+| Field | Specification |
+|-------|---------------|
+| **Rule ID** | `earnings_tomorrow` |
+| **Trigger Condition** | A ticker has a recorded earnings date tomorrow according to the local database |
+| **Time Window** | 2:00 PM ET (Exact trigger point) |
+| **Target Scope** | All valid database tickers meeting the calendar condition |
+| **Alert Payload** | "There is a chance to buy call for {TICKER} (earnings tomorrow)" |
 
 ### Rule 4 — Earnings Day Morning Matrix
+| Field | Specification |
+|-------|---------------|
+| **Rule ID** | `earnings_day_morning_matrix` |
+| **Trigger Condition** | Today is an active earnings date for a ticker in the local database |
+| **Time Window** | 9:45 AM – 11:00 AM ET |
+| **Target Scope** | All valid database tickers meeting the calendar condition |
+| **Alert Payload** | "Earnings buy window open for {TICKER}" |
 
-| Field | Value |
-|-------|-------|
-| **ID** | `earnings_day_morning_matrix` |
-| **When** | Today is an **earning date** for a ticker in the local database |
-| **Time window** | 9:45 AM – 11:00 AM ET |
-| **Alert** | "Earnings buy window open for {TICKER}" |
+### Rule 6 — Post-Earnings Momentum Window (Day +1)
+| Field | Specification |
+|-------|---------------|
+| **Rule ID** | `post_earnings_momentum` |
+| **Trigger Condition** | Today is the calendar day immediately following a recorded earnings date for a ticker in the local database |
+| **Time Window** | 9:45 AM – 10:30 AM ET |
+| **Target Scope** | All valid database tickers meeting the calendar condition |
+| **Alert Payload** | "Post-earnings volatility window active for {TICKER}" |
+| **Strategic Rationale** | Captures immediate market digestion and continuation momentum right after the dust settles from the prior day's earnings release. |
 
----
-
-## Popular Ticker Rules
-
-### Rule 5 — Popular Stocks Weekday Watch
-
-| Field | Value |
-|-------|-------|
-| **ID** | `popular_weekday` |
-| **When** | Today is **Monday, Tuesday, or Wednesday** |
-| **Time window** | 10:30 AM ET |
-| **Tickers** | Popular stocks list stored locally |
-| **Alert** | "There is a chance to buy call for {TICKER}" |
-
----
-
-### Rule 6 — Popular Stocks Friday Watch
-
-| Field | Value |
-|-------|-------|
-| **ID** | `popular_friday` |
-| **When** | Today is a **normal Friday** (weekday Friday, US market open day) |
-| **Time window** | 10:00 AM – 10:45 AM ET |
-| **Tickers** | Popular stocks list stored locally |
-| **Alert** | "There is a chance to buy call for {TICKER}" |
+### Rule 7 — Mid-Week Earnings Lookahead (Wednesday Setup)
+| Field | Specification |
+|-------|---------------|
+| **Rule ID** | `midweek_earnings_setup` |
+| **Trigger Condition** | Today is Wednesday, and a ticker has a recorded earnings date scheduled for Thursday or Friday of the same week |
+| **Time Window** | 1:00 PM – 2:00 PM ET |
+| **Target Scope** | All valid database tickers meeting the calendar condition |
+| **Alert Payload** | "Mid-week pre-earnings setup for {TICKER} (reporting soon)" |
+| **Strategic Rationale** | Captures institutional positioning that occurs mid-week ahead of late-week announcements. |
 
 ---
 
-### Rule 7 — Thursday Liquidity Setup
+## Section 2: Market Structure & Watchlist Rules
 
-| Field | Value |
-|-------|-------|
-| **ID** | `thursday_shakeout` |
-| **When** | Thursday |
-| **Time window** | 11:00 AM ET |
-| **Tickers** | Popular stocks list stored locally |
-| **Alert** | "Thursday liquidity setup on {TICKER}" |
+### Rule 5 — Popular Stocks Friday Watch
+| Field | Specification |
+|-------|---------------|
+| **Rule ID** | `popular_friday` |
+| **Trigger Condition** | Today is a standard trading Friday (weekday Friday, US market open day) |
+| **Time Window** | 10:00 AM – 10:45 AM ET |
+| **Target Scope** | Restricted specifically to the curated popular stocks watchlist: MSFT, GOOGL, NVDA, SPY |
+| **Alert Payload** | "There is a chance to buy call for {TICKER}" |
 
----
+### Rule 8 — Monthly Options Expiration (OPEX) Friday Watch
+| Field | Specification |
+|-------|---------------|
+| **Rule ID** | `monthly_opex_friday` |
+| **Trigger Condition** | Today is the third Friday of the calendar month (Standard Monthly OPEX) and a US market open day |
+| **Time Window** | 10:30 AM – 11:30 AM ET |
+| **Target Scope** | Restricted to core high-liquidity database tickers or watchlist assets |
+| **Alert Payload** | "Monthly OPEX volatility window open for {TICKER}" |
+| **Strategic Rationale** | Leverages predictable structural gamma shifts and heavy volume dynamics tied to monthly options expiration cycles. |
 
-### Rule 8 — End-of-Day Check
-
-| Field | Value |
-|-------|-------|
-| **ID** | `eod_reversal` |
-| **When** | Monday–Thursday |
-| **Time window** | 3:30 PM ET |
-| **Tickers** | Popular stocks list stored locally |
-| **Alert** | "Closing schedule check for {TICKER}" |
-
----
-
-### Rule 9 — Morning Momentum Check
-
-| Field | Value |
-|-------|-------|
-| **ID** | `gap_fill_trade` |
-| **When** | Daily |
-| **Time window** | 10:00 AM – 10:30 AM ET |
-| **Tickers** | Popular stocks list stored locally |
-| **Alert** | "Morning momentum setup initiating for {TICKER}" |
-
----
-
-### Rule 10 — IV Crush Window
-
-| Field | Value |
-|-------|-------|
-| **ID** | `iv_crush` |
-| **When** | Monday–Friday |
-| **Time window** | 9:45 AM ET |
-| **Tickers** | Popular stocks list stored locally |
-| **Alert** | "9:45 AM IV Crush window open for {TICKER}" |
-
----
-
-## Day-Specific Magic Hour Rules
-
-### Rule 11 — Monday Gap Fill
-
-| Field | Value |
-|-------|-------|
-| **ID** | `monday_gap_fill` |
-| **When** | Monday |
-| **Time window** | 10:15 AM – 11:30 AM ET |
-| **Tickers** | Popular stocks list stored locally |
-| **Alert** | "Monday Gap Fill window active for {TICKER}" |
-
----
-
-### Rule 12 — Tuesday High/Low Window
-
-| Field | Value |
-|-------|-------|
-| **ID** | `tuesday_high_low` |
-| **When** | Tuesday |
-| **Time window** | 9:30 AM – 10:30 AM ET |
-| **Tickers** | Popular stocks list stored locally |
-| **Alert** | "Tuesday High/Low window active for {TICKER}" |
-
----
-
-### Rule 13 — Wednesday Mid-Week Reversal
-
-| Field | Value |
-|-------|-------|
-| **ID** | `wednesday_midweek` |
-| **When** | Wednesday |
-| **Time window** | 2:00 PM – 4:00 PM ET |
-| **Tickers** | Popular stocks list stored locally |
-| **Alert** | "Wednesday Mid-Week Reversal window for {TICKER}" |
-
----
-
-### Rule 14 — Friday Gamma Squeeze
-
-| Field | Value |
-|-------|-------|
-| **ID** | `friday_gamma_squeeze` |
-| **When** | Friday |
-| **Time window** | 2:30 PM – 4:50 PM ET |
-| **Tickers** | Popular stocks list stored locally |
-| **Alert** | "Friday Gamma Squeeze window active for {TICKER}" |
+### Rule 9 — Month-End Institutional Flow Setup
+| Field | Specification |
+|-------|---------------|
+| **Rule ID** | `quarter_end_rebalance` |
+| **Trigger Condition** | Today is the last trading day of the calendar month per the local database calendar |
+| **Time Window** | 3:00 PM – 3:45 PM ET |
+| **Target Scope** | Curated index proxies and major large-cap database entries (e.g., SPY, MSFT, NVDA) |
+| **Alert Payload** | "Month-end rebalancing flow window active for {TICKER}" |
 
 ---
 
 ## Alert Behavior
 
-- Each rule fires **at most once per ticker per day** (deduplicated in the database).
 - Alerts appear in the **Alerts** panel and as desktop pop-ups while the app is running.
 - The **Ubuntu server** (`run_server.py serve`) fires checks at exact times via APScheduler based entirely on local SQLite database records and system clock time.
 - **No network requests or external price APIs are utilized.**

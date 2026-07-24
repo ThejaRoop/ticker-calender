@@ -25,7 +25,7 @@ ticker-calendar/
     │   ├── lock.py              # Prevents overlapping jobs
     │   └── heartbeat.py         # Alive signal for monitoring
     ├── rules/
-    │   └── evaluator.py         # All 14 alert rule evaluators
+    │   └── evaluator.py         # All alert rule evaluators
     └── ui/
         ├── app.py               # Main window + menu
         ├── calendar_view.py
@@ -44,16 +44,11 @@ earnings_today          | Today is an earnings date         | 10:00, 10:15, 10:3
 earnings_next_week      | Friday + next week has earnings   | 10:00, 10:15, 10:30, 10:45
 earnings_tomorrow       | Tomorrow is an earnings date      | 14:00
 earnings_day_morning_matrix | Today is an earnings date      | 09:45, 10:00, 10:15, 10:30, 10:45, 11:00
-popular_weekday         | Monday, Tuesday, or Wednesday     | 10:30
-popular_friday          | Friday                            | 10:00, 10:15, 10:30, 10:45
-thursday_shakeout       | Thursday                          | 11:00
-eod_reversal            | Monday-Thursday                   | 15:30
-gap_fill_trade          | Daily                             | 10:00, 10:30
-iv_crush                | Monday-Friday                     | 09:45
-monday_gap_fill         | Monday                            | 10:15, 10:30, 10:45, 11:00, 11:15, 11:30
-tuesday_high_low        | Tuesday                           | 09:30, 09:45, 10:00, 10:15, 10:30
-wednesday_midweek       | Wednesday                         | 14:00, 14:15, 14:30, 14:45, 15:00, 15:30, 15:45, 16:00
-friday_gamma_squeeze    | Friday                            | 14:30, 14:45, 15:00, 15:15, 15:30, 15:45, 16:00, 16:10, 16:20, 16:30, 16:40, 16:50
+post_earnings_momentum  | Day after earnings date           | 09:45, 10:00, 10:15, 10:30
+midweek_earnings_setup  | Wednesday + Thu/Fri earnings      | 13:00, 13:15, 13:30, 13:45, 14:00
+popular_friday          | Friday (curated watchlist)        | 10:00, 10:15, 10:30, 10:45
+monthly_opex_friday     | Third Friday of month             | 10:30, 10:45, 11:00, 11:15, 11:30
+quarter_end_rebalance   | Last trading day of month         | 15:00, 15:15, 15:30, 15:45
 
 
 Ubuntu server deploy (fool-proof)
@@ -61,7 +56,7 @@ Ubuntu server deploy (fool-proof)
 1. bash scripts/setup_ubuntu.sh
 2. python run_server.py doctor          # must pass before going live
 3. python run_server.py list            # confirm scheduled times
-4. python run_server.py run-rule popular_weekday   # smoke test
+4. python run_server.py run-rule popular_friday   # smoke test
 5. python run_server.py serve           # or use systemd (deploy/ticker-calendar.service)
 
 Ubuntu setup
@@ -77,7 +72,7 @@ export NTFY_TOPIC=test_myalerts
 # Test one rule manually
 python run_server.py run-rule earnings_today
 python run_server.py run-rule earnings_tomorrow
-python run_server.py run-rule popular_weekday
+python run_server.py run-rule popular_friday
 
 # See all scheduled jobs
 python run_server.py list
@@ -92,6 +87,8 @@ Monitor health:
 
 cat logs/heartbeat.txt    # updated every minute if alive
 tail -f logs/server.log   # job run details
+
 Run tests
+---------
 pip install -r requirements-dev.txt
 python -m pytest tests/ -v
